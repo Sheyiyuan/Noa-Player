@@ -1,0 +1,13 @@
+{
+    "name": "noa-player",
+    "version": "0.1.0",
+    "private": true,
+    "description": "NoaStudio Web/Electron workspace",
+    "license": "AGPL-3.0-or-later",
+    "packageManager": "pnpm@10.24.0",
+    "scripts": {
+        "dev": "pnpm --filter @noa-player/desktop run dev",
+        "build": "pnpm --filter @noa-player/desktop run build",
+        "lint": "pnpm --filter @noa-player/desktop run lint"
+    }
+}

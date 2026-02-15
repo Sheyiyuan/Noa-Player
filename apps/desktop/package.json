@@ -1,0 +1,15 @@
+{
+    "name": "@noa-player/desktop",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "description": "Electron desktop app for NoaStudio",
+    "scripts": {
+        "dev": "echo \"TODO: wire Electron + Vite dev command\"",
+        "build": "echo \"TODO: wire Electron build\"",
+        "lint": "echo \"TODO: add linter\""
+    },
+    "dependencies": {
+        "electron": "^32.0.0"
+    }
+}

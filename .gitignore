@@ -1,0 +1,15 @@
+# test scaffold (local only)
+tests/mpv-poc/
+
+# node artifacts
+**/node_modules/
+**/dist/
+
+# logs
+*.log
+pnpm-debug.log*
+npm-debug.log*
+
+# env files
+.env
+.env.*
