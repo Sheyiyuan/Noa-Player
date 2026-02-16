@@ -19,7 +19,7 @@
   - 播放器：HTML5 Video + hls.js
   - 框选 Overlay 与时间戳交互
 - **Plugin Host（Node 子进程）**
-  - SourceProvider 插件加载与 URL 解析
+  - 插件加载、生命周期管理与能力调用
   - 受控外部命令调用（白名单）
 
 > 原则：Renderer 零高危权限；主进程仅做系统能力封装；播放走浏览器原生能力。
@@ -33,10 +33,43 @@
 - 构建：Vite
 - DB：SQLite（better-sqlite3）
 - 图片处理：sharp
-- 播放：HTML5 Video + hls.js
-- OCR：Tesseract（MVP）
+- 富文本/Markdown：Tiptap（StarterKit）
+- 播放：HTML5 Video + hls.js（可选 dash.js）
+- OCR：tesseract.js（MVP）
+- i18n：i18next + react-i18next
+- 视频画面捕获：Renderer Canvas + Main ffmpeg-static（兜底）
 - AI：OpenAI-compatible（fetch/axios）
 - 测试：Vitest + Playwright（后续）
+
+### 2.1 库选型建议
+
+#### A. Markdown 编辑框架
+- 主选：`@tiptap/react` + `@tiptap/starter-kit`
+- 推荐扩展：`@tiptap/extension-link`、`@tiptap/extension-placeholder`、`@tiptap/extension-task-list`、`@tiptap/extension-task-item`、`@tiptap/extension-image`
+- Markdown 转换：`remark`（`remark-parse` + `remark-stringify`）用于导入导出；编辑态使用 Tiptap JSON/HTML
+- 原因：可扩展性强、与 React 集成成熟，后续做“时间戳节点/素材卡节点”更容易
+
+#### B. 视频播放
+- 主选：原生 `<video>` + `hls.js`
+- 备选：`dash.js`（仅在必须支持 DASH 时启用）
+- 控件层：优先自研轻控制条（减少依赖），如需快速美化可评估 `media-chrome`
+- 原因：和 Electron/Web 技术栈匹配，复杂度与维护成本最低
+
+#### C. OCR
+- 主选（MVP）：`tesseract.js`（离线、跨平台、前后端都可接）
+- 增强方案（v0.2+）：主进程接本地 OCR 服务（如 PaddleOCR/RapidOCR）作为可选高精度通道
+- 原因：MVP 先保证可用性，后续再按语言/精度需求切换或双轨
+
+#### D. i18n
+- 主选：`i18next` + `react-i18next` + `i18next-browser-languagedetector`
+- 命名空间建议：`common`、`player`、`library`、`note`、`settings`
+- 原因：生态成熟、类型支持与懒加载方案完善
+
+#### E. 视频画面捕获（截图/帧提取）
+- 主选：Renderer 侧 `Canvas`（`drawImage` / `toBlob`）完成实时截图与框选裁剪
+- 兜底：Main 侧 `ffmpeg-static` + `execa` 做精确时间点抽帧（用于跨域/解码异常场景）
+- 辅助：`sharp` 做缩略图与压缩
+- 原因：前端路径速度快；ffmpeg 兜底能覆盖更多边界场景
 
 ---
 
@@ -118,7 +151,7 @@ noa-player/
 - `playback.state()`
 - `capture.full()` / `capture.region(region)`
 - `ocr.run(imagePath, lang)`
-- `plugins.resolveUrl(url)`
+- `plugins.invoke(pluginId, action, payload)`
 - `ai.runText(task, text, configId)`
 - `export.markdown(noteId, options)`
 
@@ -150,25 +183,25 @@ interface PlaybackPort {
 
 ---
 
-## 7. 插件系统（SourceProvider）
+## 7. 插件系统（Plugin Runtime）
 ### 7.1 manifest
 ```json
 {
-  "id": "example.direct",
-  "name": "Direct URL Provider",
+  "id": "example.plugin",
+  "name": "Noa Example Plugin",
   "version": "0.1.0",
-  "type": "source-provider",
+  "type": "runtime-plugin",
   "permissions": { "network": true, "exec": false },
-  "match": ["^https?://"]
+  "capabilities": ["transform.text", "analyze.media"]
 }
 ```
 
 ### 7.2 接口
 ```ts
-interface SourceProvider {
+interface RuntimePlugin {
   id: string
-  match(url: string): boolean
-  resolve(input: { url: string }): Promise<ResolveResult>
+  capabilities: string[]
+  execute(input: { action: string; payload: unknown }): Promise<unknown>
 }
 ```
 
@@ -176,13 +209,16 @@ interface SourceProvider {
 - `network`：网络请求
 - `exec`：外部命令（需用户授权 + 白名单）
 
+> 插件运行时的详细规范见：`docs/dev/design/plugin-architecture.md`
+
 ---
 
 ## 8. 关键流程
-### 8.1 URL 播放
 1) Renderer 输入 URL
-2) Main 调 Plugin Host `resolveUrl`
-3) Renderer 选 source 并调用前端播放器 `open`
+### 8.1 来源播放
+1) Renderer 输入来源（本地文件或直链）
+2) Renderer 调播放器 `open`
+3) Main 侧记录来源元数据
 4) Renderer 更新状态并同步到笔记/素材流程
 
 ### 8.2 截图→OCR→笔记
@@ -213,3 +249,56 @@ interface SourceProvider {
 - M3：笔记编辑 + 时间戳回跳 + 导出
 - M4：插件框架 + AI 文本处理
 - M5：打包发布 + 稳定性优化
+
+---
+
+## 11. 编辑器实现参考（Novel）
+
+### 11.1 参考范围与原则
+- 参考对象：`steven-tey/novel` 的编辑体验与模块组织方式
+- 仅参考：架构思路、交互模式、扩展拆分策略
+- 不直接复制：业务代码、样式细节与品牌设计
+- 必须适配：NoaStudio 的时间戳、素材卡、IPC 导出与播放器联动
+
+### 11.2 推荐模块拆分（Renderer）
+```text
+src/
+  editor/
+    core/
+      editor.ts
+      extensions.ts
+      schema.ts
+    extensions/
+      timestamp.ts
+      asset-card.ts
+      slash-command.ts
+      ai-assistant.ts
+    ui/
+      editor-shell.tsx
+      toolbar.tsx
+      bubble-menu.tsx
+      slash-menu.tsx
+    serialization/
+      to-markdown.ts
+      from-markdown.ts
+```
+
+### 11.3 NoaStudio 专有扩展定义
+- `timestamp` 节点：保存 `ms/sourceId/label`，点击触发播放器 seek
+- `asset-card` 节点：保存 `assetId/imagePath/ocrText`，支持回跳与替换
+- `slash-command`：输入 `/` 插入时间戳、素材卡、OCR 片段、AI 操作
+- `ai-assistant`：对选区文本触发 summarize/translate 并回写
+
+### 11.4 数据与导出链路
+- 编辑态：Tiptap JSON（便于扩展节点）
+- 存储态：`notes.content_md` 为主，补充 `notes.content_json` 作为可选缓存
+- 导入：Markdown -> Tiptap JSON（`remark` + 自定义节点映射）
+- 导出：Tiptap JSON -> Markdown（确保时间戳和素材引用可还原）
+
+### 11.5 分阶段实施
+- Phase A：编辑器壳 + 基础扩展（paragraph/heading/list/code/link/image）
+- Phase B：时间戳节点 + 素材卡节点 + 播放器回跳
+- Phase C：Slash 命令与 AI 入口
+- Phase D：Markdown 双向转换与导出一致性测试
+
+> 详细排期与工单粒度拆分见：`docs/dev/roadmap/development-roadmap.md`

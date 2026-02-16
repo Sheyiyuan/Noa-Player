@@ -6,13 +6,13 @@
 形态：桌面独立应用（Electron）  
 UI 技术：React + TypeScript  
 播放方案：HTML5 Video + hls.js
-平台链接：插件实现（默认不内置特定平台解析）  
+插件架构：支持本地插件加载与能力扩展  
 AI：OpenAI-compatible API（用户可指向第三方或本地自部署服务）
 
 ---
 
 ## 1. 背景与问题
-用户在 YouTube/B 站等平台学习或整理资料时，常见痛点：
+用户在在线视频学习或整理资料时，常见痛点：
 - 关键信息分散在时间轴，难以快速摘录、回看与复用
 - 截图、OCR、转写、笔记通常依赖多工具，流程割裂
 - Web 方案受 CORS 与媒体安全策略限制，影响取帧与截图工作流
@@ -25,7 +25,7 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 沉淀 Markd
 ## 2. 产品定位
 - **生产力播放器工作台**：围绕时间戳、截图/框选、OCR、转写、AI 与导出形成闭环。
 - **纯 Web 播放链路**：Electron 主壳 + 浏览器原生媒体能力，避免 Wayland 原生嵌入复杂度。
-- **插件化来源解析**：平台链接解析由插件接入，降低主仓合规与维护风险。
+- **插件化能力扩展**：通过插件机制扩展非核心能力，保持主程序简洁可控。
 - **Linux 体验优先**：先保证 Linux 可用性、稳定性和打包分发。
 
 ---
@@ -48,7 +48,7 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 沉淀 Markd
 ### 4.1 MVP 目标（v0.1）
 - Linux 上稳定可用的本地/直链播放
 - 截图/框选 → 素材卡 → Markdown 导出闭环
-- 插件系统可运行：内置本地/直链 Provider，平台解析由外部插件承担
+- 插件系统可运行：支持本地插件加载、生命周期管理与权限边界
 - AI Provider 可配置，支持对 OCR/转写文本执行至少一种处理任务
 
 ### 4.2 指标（可观测）
@@ -73,7 +73,7 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 沉淀 Markd
 - 素材库：图、OCR、来源、时间戳、标签、检索
 - 笔记：Markdown 编辑与素材引用插入
 - 导出：Markdown + assets 文件夹
-- 插件系统：SourceProvider 协议 + 本地插件加载机制
+- 插件系统：Plugin Runtime 协议 + 本地插件加载机制
 - AI Provider：OpenAI-compatible（base_url/api_key/model）
 
 ### 5.2 应该（v0.2）
@@ -88,7 +88,7 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 沉淀 Markd
 - 离线 OCR/ASR 模型增强
 
 ### 5.4 不做（MVP）
-- 主程序内置 YouTube/B 站解析逻辑
+- 外部来源适配实现
 - DRM 播放能力保证
 - 云同步与账号体系
 
@@ -126,10 +126,10 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 沉淀 Markd
 - FR-EXP-01：导出 Markdown + assets
 - FR-EXP-02：导出包含来源信息、素材引用、时间戳
 
-### 6.6 插件系统（来源解析）
+### 6.6 插件系统（能力扩展）
 - FR-PLG-01：支持本地插件目录加载
-- FR-PLG-02：插件 manifest 声明 id/version/permissions/match
-- FR-PLG-03：URL 输入后按 match 选择 provider 并 resolve
+- FR-PLG-02：插件 manifest 声明 id/version/permissions/capabilities
+- FR-PLG-03：支持按 capability 调用插件 action 并返回结构化结果
 - FR-PLG-04：插件错误可见且不拖垮主进程
 
 ### 6.7 AI Provider
@@ -151,7 +151,6 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 沉淀 Markd
 ---
 
 ## 8. 合规与风险
-- 平台解析存在 ToS 风险：主程序仅提供插件接口，不内置平台解析实现
 - DRM 内容不保证播放：UI 显式提示不可播放并给出降级指引
 - 外部命令执行有安全风险：插件声明权限 + 白名单执行 + 超时与输出限制
 
@@ -181,6 +180,36 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 沉淀 Markd
 
 ## 10. 关键决策与开放问题
 - 浏览器播放限制：跨域视频可能导致截图受限，需提供可见提示与降级路径
-- OCR 默认引擎：Tesseract（快落地）或 PaddleOCR（更强但依赖重）
+- OCR 默认引擎：v0.1 固定 tesseract.js，v0.2+ 评估接入高精度本地 OCR 服务（PaddleOCR/RapidOCR）
 - 插件隔离级别：进程级隔离是否在 v0.1 强制落地
 - 数据目录策略：默认全局目录 vs 项目工作区目录
+
+---
+
+## 11. 推荐实现库（与当前路线对齐）
+
+### 11.1 Markdown 编辑
+- 主选：Tiptap（`@tiptap/react` + `@tiptap/starter-kit`）
+- 导入导出：`remark-parse` + `remark-stringify`
+
+### 11.2 视频播放
+- 主选：HTML5 Video + `hls.js`
+- 备选：`dash.js`（仅当必须支持 DASH）
+
+### 11.3 OCR
+- 主选：`tesseract.js`（MVP）
+- 增强：本地 OCR 服务（PaddleOCR/RapidOCR）作为可选高精度模式
+
+### 11.4 i18n
+- 主选：`i18next` + `react-i18next` + `i18next-browser-languagedetector`
+
+### 11.5 视频画面捕获
+- 主选：Renderer Canvas 抓帧与框选
+- 兜底：Main 侧 `ffmpeg-static` + `execa` 精确抽帧
+- 后处理：`sharp` 生成缩略图与压缩
+
+### 11.6 编辑器参考实现约束（Novel）
+- 允许参考 `steven-tey/novel` 的交互模式与扩展组织方式
+- 不直接复制其业务代码和视觉样式
+- 必须实现 NoaStudio 专有节点：`timestamp`、`asset-card`
+- Markdown 导入导出必须可保留时间戳与素材引用语义

@@ -5,14 +5,17 @@ NoaStudio 是一个基于 Web 技术栈的桌面视频生产力工具，目标�
 ## 技术路线（当前）
 
 - 桌面框架：Electron
-- 前端：React + TypeScript（规划）
+- 前端：React + TypeScript + Tiptap
 - 播放方案：HTML5 Video + hls.js（不使用 mpv）
+- OCR：tesseract.js（v0.1）
+- i18n：i18next + react-i18next
+- 视频画面捕获：Canvas（主路径）+ ffmpeg-static（兜底）
 - 数据存储：SQLite
 - 许可协议：AGPL-3.0-or-later（见 [LICENSE](LICENSE)）
 
 ## 当前仓库状态
 
-- Web/Electron 项目骨架已初始化
+- `apps/desktop` 已完成 Electron + React + Vite 可运行基础框架
 - 产品与技术文档已就位（见 `docs/dev`）
 
 ## 快速开始（骨架）
@@ -21,8 +24,6 @@ NoaStudio 是一个基于 Web 技术栈的桌面视频生产力工具，目标�
 pnpm install
 pnpm run dev
 ```
-
-> 当前 `apps/desktop` 仍是占位脚手架，下一步会补齐 Electron + Vite 可运行模板。
 
 ## 路线图
 
@@ -67,6 +68,8 @@ pnpm run dev
 
 - PRD（Web-Only 版）：[docs/dev/requirements/prd.md](docs/dev/requirements/prd.md)
 - 设计文档（Web-Only 版）：[docs/dev/design/design.md](docs/dev/design/design.md)
+- 插件架构设计：[docs/dev/design/plugin-architecture.md](docs/dev/design/plugin-architecture.md)
+- 开发路线图（Roadmap）：[docs/dev/roadmap/development-roadmap.md](docs/dev/roadmap/development-roadmap.md)
 
 ## License
 
