@@ -109,15 +109,33 @@ body,
     grid-template-columns: 1fr auto auto;
     gap: 10px;
     margin: 14px 0;
+    align-items: stretch;
 }
 
-.source-bar input[type='text'] {
+.source-input {
     min-width: 0;
     border-radius: 8px;
     border: 1px solid #2d3748;
     padding: 9px 10px;
     color: #e7e9ee;
     background: #0f141d;
+    resize: vertical;
+    min-height: 38px;
+    line-height: 1.35;
+}
+
+.source-action-button {
+    min-height: 38px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    background: linear-gradient(180deg, #243246 0%, #1e2a3b 100%);
+    border-color: #45536a;
+    white-space: nowrap;
+}
+
+.source-action-button:hover {
+    background: linear-gradient(180deg, #2a3a52 0%, #243246 100%);
 }
 
 .hidden-file-input {
@@ -170,6 +188,71 @@ body,
     display: inline-flex;
     align-items: center;
     gap: 8px;
+}
+
+.icon-button {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+}
+
+.icon-button svg {
+    display: block;
+}
+
+.icon-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.icon-button[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 9px);
+    transform: translateX(-50%) translateY(4px);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #3b4658;
+    background: #0b0f16;
+    color: #e7e9ee;
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 140ms ease, transform 140ms ease;
+    z-index: 30;
+}
+
+.icon-button[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 3px);
+    transform: translateX(-50%) translateY(4px);
+    width: 7px;
+    height: 7px;
+    background: #0b0f16;
+    border-right: 1px solid #3b4658;
+    border-bottom: 1px solid #3b4658;
+    rotate: 45deg;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 140ms ease, transform 140ms ease;
+    z-index: 29;
+}
+
+.icon-button[data-tooltip]:hover::after,
+.icon-button[data-tooltip]:hover::before,
+.icon-button[data-tooltip]:focus-visible::after,
+.icon-button[data-tooltip]:focus-visible::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 .controls-row select,
@@ -233,30 +316,42 @@ body,
     flex: 1;
     min-height: 0;
     overflow: auto;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 10px;
     padding-right: 2px;
 }
 
 .asset-item {
+    width: 100%;
+    height: 92px;
+    min-height: 92px;
     border: 1px solid #2d3748;
     border-radius: 8px;
     overflow: hidden;
     background: #0f141d;
     cursor: context-menu;
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    align-items: stretch;
 }
 
 .asset-item img {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    height: 100%;
     object-fit: cover;
     display: block;
 }
 
 .asset-item div {
-    padding: 6px 8px;
+    padding: 10px;
     font-size: 12px;
+    display: flex;
+    align-items: center;
+    color: #c8d0de;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .asset-menu {
@@ -279,6 +374,9 @@ body,
     border-radius: 0;
     background: transparent;
     padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .asset-menu button:hover {
@@ -333,6 +431,7 @@ button:hover {
     gap: 10px;
     pointer-events: auto;
     box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+    transform-origin: top right;
 }
 
 .toast button {
@@ -353,4 +452,36 @@ button:hover {
 .toast--info {
     border-color: #406b9e;
     background: #142334;
+}
+
+.toast--enter {
+    animation: toast-in 220ms ease-out both;
+}
+
+.toast--leave {
+    animation: toast-out 220ms ease-in both;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toast-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
 }

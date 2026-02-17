@@ -4,14 +4,19 @@ import { wrapIpcHandler } from './ipc-response.mjs';
 import {
     validateAssetActionPayload,
     validateExportSessionPayload,
+    validateRegisterMediaHeadersPayload,
+    validateRecognizeAssetOcrPayload,
     validateSaveCapturePayload,
 } from './validators.mjs';
 import {
     deleteCaptureAsset,
+    getCaptureAssetById,
     listCaptureAssets,
     openCaptureAssetInFolder,
     saveCaptureAsset,
 } from './asset-repository.mjs';
+import { recognizeAssetText } from './ocr-service.mjs';
+import { registerMediaHeaderOverrides } from './media-header-overrides.mjs';
 
 function registerChannel(channel, config) {
     ipcMain.handle(channel, wrapIpcHandler(config));
@@ -92,6 +97,43 @@ export function registerIpcHandlers() {
     registerChannel(IPC_CHANNELS.ASSET_DELETE, {
         validate: validateAssetActionPayload,
         handle: async (payload) => deleteCaptureAsset(payload.assetId),
+    });
+
+    registerChannel(IPC_CHANNELS.OCR_RECOGNIZE_ASSET, {
+        validate: validateRecognizeAssetOcrPayload,
+        handle: async (payload) => {
+            const asset = await getCaptureAssetById(payload.assetId);
+            if (!asset) {
+                return {
+                    success: false,
+                    text: '',
+                    usedLanguage: payload.language,
+                    copied: false,
+                    message: '素材不存在或已被删除',
+                };
+            }
+
+            const result = await recognizeAssetText({
+                imagePath: asset.imagePath,
+                preferredLanguage: payload.language,
+                copyToClipboard: payload.copyToClipboard,
+            });
+
+            return {
+                success: true,
+                text: result.text,
+                usedLanguage: result.usedLanguage,
+                copied: result.copied,
+                message: result.text ? 'OCR 完成' : 'OCR 完成，但未识别到有效文本',
+            };
+        },
+    });
+
+    registerChannel(IPC_CHANNELS.MEDIA_REGISTER_HEADERS, {
+        validate: validateRegisterMediaHeadersPayload,
+        handle: async (payload) => ({
+            registeredCount: registerMediaHeaderOverrides(payload.items),
+        }),
     });
 
     const exportSessionConfig = {

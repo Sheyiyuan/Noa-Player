@@ -76,6 +76,20 @@ export type AssetDeleteResult = {
     assetId: string;
 };
 
+export type RecognizeAssetOcrPayload = {
+    assetId: string;
+    language?: 'eng+chi_sim' | 'eng';
+    copyToClipboard?: boolean;
+};
+
+export type RecognizeAssetOcrResult = {
+    success: boolean;
+    text: string;
+    usedLanguage: 'eng+chi_sim' | 'eng';
+    copied: boolean;
+    message: string;
+};
+
 export type ExportSessionPayload = {
     content: string;
     suggestedName?: string;
@@ -89,6 +103,17 @@ export type ExportSessionResult = {
 export type ExportMarkdownPayload = ExportSessionPayload;
 export type ExportMarkdownResult = ExportSessionResult;
 
+export type RegisterMediaHeadersPayload = {
+    items: Array<{
+        url: string;
+        headers: Record<string, string>;
+    }>;
+};
+
+export type RegisterMediaHeadersResult = {
+    registeredCount: number;
+};
+
 export interface NoaDesktopApi {
     ping: () => Promise<IpcResponse<PingResult>>;
     getVersions: () => Promise<IpcResponse<AppVersions>>;
@@ -99,6 +124,8 @@ export interface NoaDesktopApi {
     listAssets: () => Promise<IpcResponse<ListAssetsResult>>;
     openAssetInFolder: (payload: AssetActionPayload) => Promise<IpcResponse<AssetOpenFolderResult>>;
     deleteAsset: (payload: AssetActionPayload) => Promise<IpcResponse<AssetDeleteResult>>;
+    recognizeAssetOcr: (payload: RecognizeAssetOcrPayload) => Promise<IpcResponse<RecognizeAssetOcrResult>>;
     exportSession: (payload: ExportSessionPayload) => Promise<IpcResponse<ExportSessionResult>>;
     exportMarkdown: (payload: ExportMarkdownPayload) => Promise<IpcResponse<ExportMarkdownResult>>;
+    registerMediaHeaders: (payload: RegisterMediaHeadersPayload) => Promise<IpcResponse<RegisterMediaHeadersResult>>;
 }

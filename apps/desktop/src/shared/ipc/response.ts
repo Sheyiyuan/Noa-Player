@@ -25,12 +25,13 @@ export async function invokeIpc<T>(operation: () => Promise<IpcResponse<T>>): Pr
     try {
         return await operation();
     } catch (error) {
+        const reason = error instanceof Error && error.message ? `：${error.message}` : '';
         return createIpcFailure(
             error instanceof AppError
                 ? error
                 : new AppError({
                     code: ERROR_CODES.IPC_HANDLER_FAILED,
-                    message: 'IPC 调用失败',
+                    message: `IPC 调用失败${reason}`,
                     details: error,
                 }),
         );

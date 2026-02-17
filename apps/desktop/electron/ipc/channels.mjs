@@ -8,6 +8,8 @@ export const IPC_CHANNELS = {
     ASSET_LIST: 'noa:asset:list',
     ASSET_OPEN_IN_FOLDER: 'noa:asset:openInFolder',
     ASSET_DELETE: 'noa:asset:delete',
+    OCR_RECOGNIZE_ASSET: 'noa:ocr:recognizeAsset',
+    MEDIA_REGISTER_HEADERS: 'noa:media:registerHeaders',
     EXPORT_SESSION: 'noa:export:session',
     NOTES_EXPORT_MARKDOWN: 'noa:notes:exportMarkdown',
 };

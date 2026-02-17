@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('noaDesktop', {
     listAssets: () => ipcRenderer.invoke(IPC_CHANNELS.ASSET_LIST),
     openAssetInFolder: (payload) => ipcRenderer.invoke(IPC_CHANNELS.ASSET_OPEN_IN_FOLDER, payload),
     deleteAsset: (payload) => ipcRenderer.invoke(IPC_CHANNELS.ASSET_DELETE, payload),
+    recognizeAssetOcr: (payload) => ipcRenderer.invoke(IPC_CHANNELS.OCR_RECOGNIZE_ASSET, payload),
+    registerMediaHeaders: (payload) => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_REGISTER_HEADERS, payload),
     exportSession: (payload) => ipcRenderer.invoke(IPC_CHANNELS.EXPORT_SESSION, payload),
     exportMarkdown: (payload) => ipcRenderer.invoke(IPC_CHANNELS.NOTES_EXPORT_MARKDOWN, payload),
 });

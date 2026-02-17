@@ -101,3 +101,66 @@ export function validateExportSessionPayload(payload) {
 }
 
 export const validateExportMarkdownPayload = validateExportSessionPayload;
+
+export function validateRegisterMediaHeadersPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+        throw new AppError({
+            code: ERROR_CODES.IPC_INVALID_PAYLOAD,
+            message: 'payload 必须是对象',
+        });
+    }
+
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    const normalizedItems = items
+        .map((item) => {
+            const url = typeof item?.url === 'string' ? item.url.trim() : '';
+            const headers = item?.headers && typeof item.headers === 'object' && !Array.isArray(item.headers)
+                ? Object.fromEntries(
+                    Object.entries(item.headers).filter(([key, value]) => {
+                        return typeof key === 'string' && key.length > 0 && typeof value === 'string' && value.length > 0;
+                    }),
+                )
+                : {};
+
+            return {
+                url,
+                headers,
+            };
+        })
+        .filter((item) => item.url.length > 0 && Object.keys(item.headers).length > 0);
+
+    return { items: normalizedItems };
+}
+
+export function validateRecognizeAssetOcrPayload(payload) {
+    if (!payload || typeof payload !== 'object') {
+        throw new AppError({
+            code: ERROR_CODES.IPC_INVALID_PAYLOAD,
+            message: 'payload 必须是对象',
+        });
+    }
+
+    const assetId = typeof payload.assetId === 'string' ? payload.assetId.trim() : '';
+    if (!assetId) {
+        throw new AppError({
+            code: ERROR_CODES.IPC_INVALID_PAYLOAD,
+            message: 'assetId 不能为空',
+        });
+    }
+
+    const language = typeof payload.language === 'string' ? payload.language.trim() : 'eng+chi_sim';
+    if (language !== 'eng+chi_sim' && language !== 'eng') {
+        throw new AppError({
+            code: ERROR_CODES.IPC_INVALID_PAYLOAD,
+            message: 'language 仅支持 eng+chi_sim 或 eng',
+        });
+    }
+
+    const copyToClipboard = typeof payload.copyToClipboard === 'boolean' ? payload.copyToClipboard : true;
+
+    return {
+        assetId,
+        language,
+        copyToClipboard,
+    };
+}
