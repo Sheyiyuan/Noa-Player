@@ -45,7 +45,7 @@ export function SystemCard() {
 
     const callExportSession = async () => {
         const result = await noaDesktopClient.exportSession({
-            content: '# NoaStudio IPC\n\n这是一段导出占位内容。',
+            content: '# Noa Studio IPC\n\n这是一段导出占位内容。',
             suggestedName: 'noa-session.md',
         });
         setOutput(JSON.stringify(result, null, 2));
@@ -53,7 +53,7 @@ export function SystemCard() {
 
     return (
         <section className="card">
-            <h1>NoaStudio</h1>
+            <h1>Noa Studio</h1>
             <p>Phase 0 基建已接入：renderer 分层、AppError、store、IPC 统一响应。</p>
             <div className="actions">
                 <button type="button" onClick={callPing}>ping</button>

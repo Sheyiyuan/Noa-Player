@@ -1,7 +1,7 @@
-# NoaStudio — 需求文档（PRD / Web-Only Edition）
+# Noa Studio — 需求文档（PRD / Web-Only Edition）
 版本：v0.4-web-only  
 状态：Draft  
-产品代号：NoaStudio  
+产品代号：Noa Studio  
 目标平台：跨平台（Linux、Windows、macOS）  
 形态：桌面独立应用（Electron）  
 UI 技术：React + TypeScript  
@@ -18,7 +18,7 @@ AI：OpenAI-compatible API（用户可指向第三方或本地自部署服务）
 - Web 方案受 CORS 与媒体安全策略限制，影响取帧与截图工作流
 - 若要求“单窗口 + 本地高控制力”，Web 技术栈实现成本高且上限受限
 
-NoaStudio 目标：提供“看视频 → 结构化提取信息 → 复制到系统剪贴板”的高效工作台。
+Noa Studio 目标：提供“看视频 → 结构化提取信息 → 复制到系统剪贴板”的高效工作台。
 
 ---
 
@@ -40,7 +40,7 @@ NoaStudio 目标：提供“看视频 → 结构化提取信息 → 复制到系
 1) 粘贴链接或打开本地视频 → 播放 → 一键截图附带时间戳 → OCR → 复制结构化内容到系统剪贴板  
 2) 框选截图（只截代码区或讲义区）→ OCR → 插入笔记  
 3) 片段转写（30s/2min）→ 得到文本 → AI 总结/提问 → 写入笔记  
-4) 复制内容包含时间戳引用，回到 NoaStudio 可快速定位复习
+4) 复制内容包含时间戳引用，回到 Noa Studio 可快速定位复习
 
 ---
 

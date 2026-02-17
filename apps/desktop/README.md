@@ -1,6 +1,6 @@
-# @noa-player/desktop
+# @noa-studio/desktop
 
-NoaStudio 桌面端基础框架（Electron + React + Vite + TypeScript）。
+Noa Studio 桌面端基础框架（Electron + React + Vite + TypeScript）。
 
 ## 目录
 
@@ -36,11 +36,56 @@ apps/desktop
 ```bash
 # 在仓库根目录执行
 pnpm install
-pnpm --filter @noa-player/desktop run dev
-pnpm --filter @noa-player/desktop run build
-pnpm --filter @noa-player/desktop run lint
-pnpm --filter @noa-player/desktop run test
+pnpm --filter @noa-studio/desktop run dev
+pnpm --filter @noa-studio/desktop run build
+pnpm --filter @noa-studio/desktop run lint
+pnpm --filter @noa-studio/desktop run test
 ```
+
+## 使用说明：播放源输入格式
+
+播放器输入框当前支持以下格式：
+
+- 单链接直链
+	- 支持常见可播放地址（如 mp4、webm、m3u8、mpd）。
+- 双轨链接（音视频分离）
+	- 每行一个 URL，共两行。
+	- 可选前缀：`v:`/`video:` 表示视频轨，`a:`/`audio:` 表示音频轨。
+- 多分片 m4s
+	- 每行一个 URL。
+	- 建议使用前缀显式标注轨道（`v:` / `a:`）。
+- JSON 源配置（推荐）
+	- 支持精简结构，示例：
+
+```json
+{
+	"title": "示例视频",
+	"duration": 123.45,
+	"sources": [
+		{
+			"url": "https://example.com/video.mp4",
+			"track": "video",
+			"headers": {
+				"Referer": "https://example.com",
+				"Origin": "https://example.com"
+			}
+		},
+		{
+			"url": "https://example.com/audio.m4a",
+			"track": "audio"
+		}
+	]
+}
+```
+
+字段说明：
+
+- `title`：可选，视频标题。
+- `duration`：可选，秒单位时长，用于初始化进度条。
+- `sources`：必填，播放源数组。
+- `sources[].url`：必填，媒体地址。
+- `sources[].track`：可选，`video` / `audio` / `auto`。
+- `sources[].headers`：可选，请求头键值对（用于需要鉴权头的媒体地址）。
 
 ## 下一步建议
 

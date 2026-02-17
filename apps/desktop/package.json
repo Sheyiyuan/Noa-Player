@@ -1,9 +1,9 @@
 {
-    "name": "@noa-player/desktop",
+    "name": "@noa-studio/desktop",
     "version": "0.1.0",
     "private": true,
     "type": "module",
-    "description": "Electron desktop app for NoaStudio",
+    "description": "Electron desktop app for Noa Studio",
     "scripts": {
         "dev": "concurrently -k \"pnpm run dev:renderer\" \"pnpm run dev:electron\"",
         "dev:renderer": "vite",
@@ -16,8 +16,10 @@
         "test:watch": "vitest"
     },
     "dependencies": {
+        "dashjs": "^5.1.1",
         "electron": "^32.0.0",
         "hls.js": "^1.6.15",
+        "lucide-react": "^0.564.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "tesseract.js": "^7.0.0",

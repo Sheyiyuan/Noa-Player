@@ -27,7 +27,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint desktop
-        run: pnpm --filter @noa-player/desktop run lint
+        run: pnpm --filter @noa-studio/desktop run lint
 
       - name: Build desktop
-        run: pnpm --filter @noa-player/desktop run build
+        run: pnpm --filter @noa-studio/desktop run build

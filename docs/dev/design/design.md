@@ -1,7 +1,7 @@
-# NoaStudio — 设计文档（Design Doc / Web-Only Edition）
+# Noa Studio — 设计文档（Design Doc / Web-Only Edition）
 版本：v0.4-web-only  
 状态：Draft  
-目标：定义 NoaStudio 在 Electron + React 纯 Web 播放方案下的核心架构、模块边界、数据结构、插件协议、关键流程与安全策略。
+目标：定义 Noa Studio 在 Electron + React 纯 Web 播放方案下的核心架构、模块边界、数据结构、插件协议、关键流程与安全策略。
 
 ---
 
@@ -75,7 +75,7 @@
 
 ## 3. 建议目录结构
 ```text
-noa-player/
+noa-studio/
   apps/
     desktop/
       src/
@@ -133,7 +133,7 @@ noa-player/
 - PRIMARY KEY(note_id, asset_id)
 
 ### 4.2 文件布局
-- Linux：`~/.local/share/NoaStudio/`
+- Linux：`~/.local/share/Noa Studio/`
 - 子目录：`db.sqlite`, `assets/images`, `assets/thumbs`, `exports`, `logs`, `plugins`
 
 ---
@@ -259,7 +259,7 @@ interface RuntimePlugin {
 - 参考对象：`steven-tey/novel` 的编辑体验与模块组织方式
 - 仅参考：架构思路、交互模式、扩展拆分策略
 - 不直接复制：业务代码、样式细节与品牌设计
-- 必须适配：NoaStudio 的时间戳、素材卡、IPC 导出与播放器联动
+- 必须适配：Noa Studio 的时间戳、素材卡、IPC 导出与播放器联动
 
 ### 11.2 推荐模块拆分（Renderer）
 ```text
@@ -284,7 +284,7 @@ src/
       from-markdown.ts
 ```
 
-### 11.3 NoaStudio 专有扩展定义
+### 11.3 Noa Studio 专有扩展定义
 - `timestamp` 节点：保存 `ms/sourceId/label`，点击触发播放器 seek
 - `asset-card` 节点：保存 `assetId/imagePath/ocrText`，支持回跳与替换
 - `slash-command`：输入 `/` 插入时间戳、素材卡、OCR 片段、AI 操作

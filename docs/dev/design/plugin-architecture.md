@@ -1,4 +1,4 @@
-# NoaStudio — 插件架构设计（Plugin Runtime Architecture）
+# Noa Studio — 插件架构设计（Plugin Runtime Architecture）
 版本：v0.1-plugin-arch  
 状态：Draft  
 更新日期：2026-02-16
@@ -6,7 +6,7 @@
 ---
 
 ## 1. 设计目标
-插件架构用于扩展 NoaStudio 的非核心能力，并保证主程序稳定、安全、可演进。
+插件架构用于扩展 Noa Studio 的非核心能力，并保证主程序稳定、安全、可演进。
 
 核心目标：
 - 安全：插件不直接获得系统高权限，所有能力受控暴露
@@ -213,7 +213,7 @@ export interface NoaRuntimePlugin {
 ## 9. 兼容性与版本策略
 
 版本维度：
-- `engineVersion`：NoaStudio 运行时版本
+- `engineVersion`：Noa Studio 运行时版本
 - `apiVersion`：插件 API 协议版本
 
 策略建议：

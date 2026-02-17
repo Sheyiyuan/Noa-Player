@@ -1,4 +1,4 @@
-# NoaStudio — 详细开发路线图（Development Roadmap）
+# Noa Studio — 详细开发路线图（Development Roadmap）
 版本：v0.1-roadmap  
 状态：Draft  
 更新日期：2026-02-16
@@ -23,7 +23,7 @@
 - 功能：核心用户路径可演示
 - 质量：关键模块有基础自动化测试
 - 文档：设计/接口/使用说明同步更新
-- 可回归：`pnpm --filter @noa-player/desktop run lint` 与 `build` 通过
+- 可回归：`pnpm --filter @noa-studio/desktop run lint` 与 `build` 通过
 
 ---
 
