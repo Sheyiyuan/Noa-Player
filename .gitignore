@@ -1,5 +1,5 @@
 # test scaffold (local only)
-tests/mpv-poc/
+local/
 
 # node artifacts
 **/node_modules/
@@ -13,3 +13,6 @@ npm-debug.log*
 # env files
 .env
 .env.*
+
+# local OCR data files
+apps/desktop/*.traineddata
