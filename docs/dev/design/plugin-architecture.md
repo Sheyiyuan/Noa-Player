@@ -13,10 +13,12 @@
 - 稳定：插件崩溃/超时不影响主进程与渲染层
 - 可扩展：以 capability/action 模型扩展能力
 - 可维护：manifest 驱动、版本化协议、统一日志与错误模型
+- 业务对齐：优先服务截图/OCR 后的剪贴板复制与会话导出
 
 非目标：
 - 不定义插件市场与云分发
 - 不定义插件商业化与签名基础设施（后续迭代）
+- 不在 MVP 强制落地内置 Markdown 编辑器插件化
 
 ---
 
@@ -92,6 +94,12 @@ Host 责任：
 - `capability`：能力命名空间（如 `transform.text`）
 - `action`：能力下的具体动作（如 `summarize`）
 
+推荐能力命名：
+- `transform.text`：文本处理（总结、翻译、改写）
+- `analyze.media`：媒体分析（OCR 后处理、片段分析）
+- `integration.clipboard`：剪贴板模板渲染与格式化
+- `export.session`：会话导出增强（后处理、结构扩展）
+
 请求格式：
 ```ts
 type PluginInvokeRequest = {
@@ -157,6 +165,11 @@ type PluginInvokeResponse<T = unknown> =
 - `plugins.get(pluginId)`
 - `plugins.invoke(request)`
 - `plugins.enable(pluginId, enabled)`
+
+与内建能力边界（建议）：
+- 内建通道负责基础链路：`integration.copyText`、`integration.copyImage`、`export.session`
+- 插件通过 `plugins.invoke` 扩展模板与导出后处理能力
+- 插件不得绕过 Host 直接访问系统高权限接口
 
 协议要求：
 - 所有请求带 `traceId`
@@ -260,3 +273,7 @@ Phase D（运维与生态）
 - 主设计文档：`docs/dev/design/design.md`
 - 需求文档：`docs/dev/requirements/prd.md`
 - 开发路线图：`docs/dev/roadmap/development-roadmap.md`
+
+命名约定：
+- 剪贴板能力使用 `integration.*`
+- 导出能力使用 `export.session`

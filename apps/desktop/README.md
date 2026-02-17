@@ -8,14 +8,26 @@ NoaStudio 桌面端基础框架（Electron + React + Vite + TypeScript）。
 apps/desktop
 ├─ electron/
 │  ├─ main.mjs
-│  └─ preload.mjs
+│  ├─ preload.mjs
+│  └─ ipc/
+│     ├─ channels.mjs
+│     ├─ register-handlers.mjs
+│     ├─ ipc-response.mjs
+│     ├─ app-error.mjs
+│     └─ validators.mjs
 ├─ src/
-│  ├─ App.tsx
+│  ├─ app/
+│  ├─ features/
+│  ├─ shared/
 │  ├─ main.tsx
+│  ├─ ipc.ts
 │  ├─ styles.css
 │  └─ vite-env.d.ts
+├─ tests/
+│  └─ ipc-response.test.ts
 ├─ index.html
 ├─ tsconfig.json
+├─ vitest.config.ts
 └─ vite.config.ts
 ```
 
@@ -26,6 +38,8 @@ apps/desktop
 pnpm install
 pnpm --filter @noa-player/desktop run dev
 pnpm --filter @noa-player/desktop run build
+pnpm --filter @noa-player/desktop run lint
+pnpm --filter @noa-player/desktop run test
 ```
 
 ## 下一步建议
@@ -38,19 +52,44 @@ pnpm --filter @noa-player/desktop run build
 
 - main 端注册：`electron/ipc/register-handlers.mjs`
 - preload 桥接：`electron/preload.mjs`
-- renderer 类型：`src/ipc.ts`
+- renderer 类型与调用：`src/ipc.ts` + `src/shared/ipc/contracts.ts`
 
 当前通道：
 
 - `noa:app:ping`
 - `noa:app:getVersions`
-- `noa:notes:exportMarkdown`（占位实现）
+- `noa:export:session`（会话导出主通道）
+- `noa:notes:exportMarkdown`（历史兼容占位，待移除）
+
+统一响应：
+
+- success: `{ ok: true, data }`
+- failure: `{ ok: false, error: { code, message, details? } }`
+
+参数校验基线：
+
+- 在主进程通过 `validate*Payload` 函数统一校验
+- 新增通道可复用 `wrapIpcHandler({ validate, handle })` 模板
+
+## Phase 0 状态管理基线
+
+已接入 `zustand` 并定义最小 store：
+
+- 播放状态：`src/shared/state/playback-store.ts`
+- 编辑器状态：`src/shared/state/editor-store.ts`
+- 素材状态：`src/shared/state/asset-store.ts`
+
+## 测试与 CI
+
+- Vitest 入口：`vitest.config.ts`
+- 基础测试示例：`tests/ipc-response.test.ts`
+- CI：仓库根目录 `.github/workflows/ci.yml`（`lint + build`）
 
 ## 推荐库（下一步实施）
 
-- Markdown 编辑：Tiptap（`@tiptap/react` + `@tiptap/starter-kit`）
-- Markdown 导入导出：`remark-parse` + `remark-stringify`
 - 视频播放：`hls.js`（可选 `dash.js`）
 - OCR：`tesseract.js`（MVP）
+- 剪贴板：Electron `clipboard` API（文本/图片）
+- 导出：`remark-stringify`
 - i18n：`i18next` + `react-i18next` + `i18next-browser-languagedetector`
 - 视频画面捕获：Renderer Canvas + Main `ffmpeg-static`（兜底）+ `sharp`（后处理）

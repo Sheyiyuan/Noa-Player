@@ -151,9 +151,10 @@ noa-player/
 - `playback.state()`
 - `capture.full()` / `capture.region(region)`
 - `ocr.run(imagePath, lang)`
+- `integration.copyText(payload)` / `integration.copyImage(assetId)`
 - `plugins.invoke(pluginId, action, payload)`
 - `ai.runText(task, text, configId)`
-- `export.markdown(noteId, options)`
+- `export.session(sessionId, options)`
 
 ---
 
@@ -221,17 +222,17 @@ interface RuntimePlugin {
 3) Main 侧记录来源元数据
 4) Renderer 更新状态并同步到笔记/素材流程
 
-### 8.2 截图→OCR→笔记
+### 8.2 截图→OCR→剪贴板
 1) Renderer 触发截图
 2) Renderer 抓帧并通过 IPC 请求落盘
 3) Main 生成素材卡 + 缩略图 + 入库
 4) OCR 可选执行并回写
-5) Renderer 插入引用与时间戳
+5) Renderer 生成模板文本并复制到系统剪贴板
 
 ### 8.3 导出
-1) 读取 note + asset 关系
+1) 读取 session + asset 关系
 2) 复制 assets
-3) 输出 Markdown 文件
+3) 输出会话摘要 Markdown 文件
 
 ---
 
@@ -246,7 +247,7 @@ interface RuntimePlugin {
 ## 10. 里程碑
 - M1：Electron 基础骨架 + 浏览器播放控制 + 截图
 - M2：框选 + 素材库 + OCR
-- M3：笔记编辑 + 时间戳回跳 + 导出
+- M3：剪贴板复制 + 时间戳回跳 + 导出
 - M4：插件框架 + AI 文本处理
 - M5：打包发布 + 稳定性优化
 

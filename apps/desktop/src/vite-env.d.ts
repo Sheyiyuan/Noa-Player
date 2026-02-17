@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { NoaDesktopApi } from './ipc';
+import type { NoaDesktopApi } from './shared/ipc/contracts';
 
 declare global {
     interface Window {

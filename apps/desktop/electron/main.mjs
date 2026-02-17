@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { registerIpcHandlers } from './ipc/register-handlers.mjs';
@@ -12,6 +12,8 @@ function createMainWindow() {
         height: 800,
         minWidth: 1024,
         minHeight: 640,
+        frame: false,
+        autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, 'preload.mjs'),
             contextIsolation: true,
@@ -31,6 +33,7 @@ function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
     registerIpcHandlers();
     createMainWindow();
 
