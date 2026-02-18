@@ -143,6 +143,7 @@ pnpm run dev
 - PRD（Web-Only 版）：[docs/dev/requirements/prd.md](docs/dev/requirements/prd.md)
 - 设计文档（Web-Only 版）：[docs/dev/design/design.md](docs/dev/design/design.md)
 - 插件架构设计：[docs/dev/design/plugin-architecture.md](docs/dev/design/plugin-architecture.md)
+- 笔记工程化与无感版本控制方案：[docs/dev/design/note-project-versioning.md](docs/dev/design/note-project-versioning.md)
 - 开发路线图（Roadmap）：[docs/dev/roadmap/development-roadmap.md](docs/dev/roadmap/development-roadmap.md)
 
 ## License

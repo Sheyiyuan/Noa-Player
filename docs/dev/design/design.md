@@ -1,305 +1,173 @@
-# Noa Studio — 设计文档（Design Doc / Web-Only Edition）
-版本：v0.4-web-only  
+# Noa Studio — 设计文档（Design Doc / Local-First Edition）
+版本：v0.5-local-first  
 状态：Draft  
-目标：定义 Noa Studio 在 Electron + React 纯 Web 播放方案下的核心架构、模块边界、数据结构、插件协议、关键流程与安全策略。
+更新日期：2026-02-18  
+目标：定义三栏固定工作台、多屏显示模式、时间戳/AB/截图/GIF/OCR/Markdown 联动的实现方案。
 
 ---
 
-## 1. 总体架构
-### 1.1 组件划分
-- **Electron Main**
-  - 生命周期、窗口管理、系统能力封装
-  - SQLite、文件系统、导出、日志
-  - 管理 Plugin Host 子进程
-- **Electron Preload**
-  - 向 Renderer 暴露白名单 API（contextBridge）
-  - 输入参数校验与权限边界控制
-- **Electron Renderer（React + TS）**
-  - UI：播放控制、素材库、笔记、导出
-  - 播放器：HTML5 Video + hls.js
-  - 框选 Overlay 与时间戳交互
-- **Plugin Host（Node 子进程）**
-  - 插件加载、生命周期管理与能力调用
-  - 受控外部命令调用（白名单）
-
-> 原则：Renderer 零高危权限；主进程仅做系统能力封装；播放走浏览器原生能力。
+## 1. 设计原则
+- **单任务高聚焦**：观看、提取、记录在同一窗口完成。
+- **最小心智负担**：自动归档、自动保存、自动插入，用户少做路径管理。
+- **本地文件透明**：工程结构可直接在文件系统查看与迁移。
+- **MVP 优先**：先保证截图与笔记主链路稳定，再扩展 GIF、多屏高级模式与 AI 深化。
 
 ---
 
-## 2. 技术栈
-- Electron 32+
-- TypeScript 5+
-- React 18+
-- 构建：Vite
-- DB：SQLite（better-sqlite3）
-- 图片处理：sharp
-- 富文本/Markdown：Tiptap（StarterKit）
-- 播放：HTML5 Video + hls.js（可选 dash.js）
-- OCR：tesseract.js（MVP）
-- i18n：i18next + react-i18next
-- 视频画面捕获：Renderer Canvas + Main ffmpeg-static（兜底）
-- AI：OpenAI-compatible（fetch/axios）
-- 测试：Vitest + Playwright（后续）
+## 2. 窗口与布局交互
+### 2.1 主窗口（三栏固定）
+- 左栏（播放器区）
+  - 视频画面
+  - 控制条：播放/暂停、进度、音量、倍速、全屏
+  - 时间戳显示
+  - AB 操作：设置 A、设置 B、取消循环
+  - 采集入口：截图、GIF 录制
+- 中栏（资源库）
+  - 素材列表：截图、GIF、OCR 文本、本地图片
+  - 交互：预览、放大查看、拖拽到笔记、重命名、删除
+  - 排序：按时间戳、按文件类型
+- 右栏（Markdown 编辑器）
+  - 极简编辑（基础 Markdown）
+  - 快捷插入：时间戳、AB 标记、图片/GIF
+  - 自动保存与崩溃恢复
 
-### 2.1 库选型建议
-
-#### A. Markdown 编辑框架
-- 主选：`@tiptap/react` + `@tiptap/starter-kit`
-- 推荐扩展：`@tiptap/extension-link`、`@tiptap/extension-placeholder`、`@tiptap/extension-task-list`、`@tiptap/extension-task-item`、`@tiptap/extension-image`
-- Markdown 转换：`remark`（`remark-parse` + `remark-stringify`）用于导入导出；编辑态使用 Tiptap JSON/HTML
-- 原因：可扩展性强、与 React 集成成熟，后续做“时间戳节点/素材卡节点”更容易
-
-#### B. 视频播放
-- 主选：原生 `<video>` + `hls.js`
-- 备选：`dash.js`（仅在必须支持 DASH 时启用）
-- 控件层：优先自研轻控制条（减少依赖），如需快速美化可评估 `media-chrome`
-- 原因：和 Electron/Web 技术栈匹配，复杂度与维护成本最低
-
-#### C. OCR
-- 主选（MVP）：`tesseract.js`（离线、跨平台、前后端都可接）
-- 增强方案（v0.2+）：主进程接本地 OCR 服务（如 PaddleOCR/RapidOCR）作为可选高精度通道
-- 原因：MVP 先保证可用性，后续再按语言/精度需求切换或双轨
-
-#### D. i18n
-- 主选：`i18next` + `react-i18next` + `i18next-browser-languagedetector`
-- 命名空间建议：`common`、`player`、`library`、`note`、`settings`
-- 原因：生态成熟、类型支持与懒加载方案完善
-
-#### E. 视频画面捕获（截图/帧提取）
-- 主选：Renderer 侧 `Canvas`（`drawImage` / `toBlob`）完成实时截图与框选裁剪
-- 兜底：Main 侧 `ffmpeg-static` + `execa` 做精确时间点抽帧（用于跨域/解码异常场景）
-- 辅助：`sharp` 做缩略图与压缩
-- 原因：前端路径速度快；ffmpeg 兜底能覆盖更多边界场景
+### 2.2 多屏专业模式
+- 主窗口保留所有交互控制。
+- 独立视频窗口仅显示画面（无边框、无控件、可全屏）。
+- 支持悬浮小窗模式：置顶 + 点击穿透。
+- 副屏窗口不应抢焦点，不应改变主窗口的控制上下文。
 
 ---
 
-## 3. 建议目录结构
+## 3. 功能模块设计
+### 3.1 播放模块
+- 输入源：本地文件、视频直链。
+- 状态：`currentTime`、`duration`、`rate`、`volume`、`isLoopAB`。
+- 输出事件：时间更新、源加载成功/失败、循环区间状态变化。
+
+### 3.2 AB 复读模块
+- 数据结构：`abSegment = { aMs, bMs, enabled }`。
+- 交互逻辑：
+  1) 点击 A 记录当前时间。
+  2) 点击 B 记录当前时间并启用循环。
+  3) 播放超出 B 自动 seek 到 A。
+  4) 点击取消立即关闭循环。
+- 与笔记联动：生成 `[AB mm:ss-mm:ss]` 标记，点击触发循环激活。
+
+### 3.3 时间戳系统
+- 插入格式：`[hh:mm:ss]`。
+- 点击行为：解析标记并调用播放器 seek。
+- 素材元数据：截图/GIF 自动写入 `timestampMs` 与可读标签。
+
+### 3.4 截图与 GIF 模块
+- 截图（MVP 主链路）
+  - 从当前视频帧生成图片
+  - 自动落盘到工程 `assets/`
+  - 自动生成资源条目并插入笔记
+- GIF（后续迭代）
+  - 录制模式：手动开始/结束、基于 AB 片段
+  - 处理引擎：`ffmpeg.wasm`
+  - 输出与截图统一进入资源库
+
+### 3.5 笔记编辑器模块
+- 范围限定：仅基础 Markdown，不含复杂排版/表格/公式/导出排版。
+- 文件格式：标准 `.md`。
+- 编辑能力：文本输入、图片/GIF 拖拽、时间戳/AB 快捷插入。
+- 保存策略：本地自动保存（防抖 + 退出前 flush）。
+
+### 3.6 资源库模块
+- 资源类型：`screenshot | gif | image | ocr-text`。
+- 核心能力：预览、拖拽插入、重命名、删除、排序。
+- 绑定关系：单工程资源集，不跨工程共享默认索引。
+
+### 3.7 AI 增强模块（可选）
+- 配置：用户在本地填写 API Key 与 base URL/model。
+- 功能：OCR 结果整理、选中文本总结/翻译、生成笔记大纲。
+- 约束：AI 调用失败不影响核心链路，且可完全禁用。
+
+---
+
+## 4. 工程文件模型（本地优先）
+### 4.1 目录结构
 ```text
-noa-studio/
-  apps/
-    desktop/
-      src/
-        main/
-          index.ts
-          ipc/
-          services/
-        preload/
-          index.ts
-          api/
-        renderer/
-          app/
-          components/
-          stores/
-          pages/
-      package.json
-  docs/
-    dev/
-      requirements/
-      design/
-      test/
+project-folder/
+  note.md
+  assets/
+    20260218-012345.png
+    20260218-012520.gif
+    imported-xxx.jpg
 ```
 
----
-
-## 4. 数据模型（SQLite）
-### 4.1 表结构
-**sources**
-- id TEXT PK
-- type TEXT (local|url)
-- origin TEXT
-- title TEXT
-- created_at INTEGER
-
-**clips_assets**
-- id TEXT PK
-- source_id TEXT FK
-- timestamp_ms INTEGER
-- image_path TEXT
-- thumb_path TEXT
-- ocr_text TEXT
-- tags TEXT (JSON)
-- created_at INTEGER
-
-**notes**
-- id TEXT PK
-- title TEXT
-- content_md TEXT
-- created_at INTEGER
-- updated_at INTEGER
-
-**note_assets**
-- note_id TEXT
-- asset_id TEXT
-- PRIMARY KEY(note_id, asset_id)
-
-### 4.2 文件布局
-- Linux：`~/.local/share/Noa Studio/`
-- 子目录：`db.sqlite`, `assets/images`, `assets/thumbs`, `exports`, `logs`, `plugins`
+### 4.2 规则
+- 一个工程 = 一个普通文件夹。
+- 笔记为标准 Markdown 文件；素材统一在 `assets/`。
+- 不额外引入必须存在的配置文件。
+- 可直接复制、备份、分享。
 
 ---
 
-## 5. IPC 与安全策略
+## 5. IPC 边界与接口草案
 ### 5.1 安全基线
 - `contextIsolation: true`
 - `nodeIntegration: false`
-- 禁止 Renderer 直接调用系统命令
-- Preload 只暴露固定 API
+- Renderer 仅通过 preload 白名单调用系统能力
 
 ### 5.2 关键通道
 - `playback.open(source)`
 - `playback.control({ action, value })`
-- `playback.state()`
-- `capture.full()` / `capture.region(region)`
-- `ocr.run(imagePath, lang)`
-- `integration.copyText(payload)` / `integration.copyImage(assetId)`
-- `plugins.invoke(pluginId, action, payload)`
-- `ai.runText(task, text, configId)`
-- `export.session(sessionId, options)`
+- `playback.setAB({ aMs, bMs, enabled })`
+- `capture.screenshot()`
+- `capture.recordGif({ startMs, endMs })`
+- `library.list(projectId)` / `library.rename(id, name)` / `library.delete(id)`
+- `note.insertToken({ type: 'timestamp' | 'ab' | 'asset', payload })`
+- `note.save({ path, content })`
+- `ocr.run(assetId)`
+- `ai.run({ task, text, provider })`
 
 ---
 
-## 6. 播放策略（重点）
-### 6.1 浏览器播放能力
-- 本地文件：`<video>` + `File/Blob URL`
-- HTTP/HTTPS 直链：`<video src>`
-- HLS：优先 `hls.js`，浏览器原生支持时直接播放
-- DASH：v0.1 非强制（可后续评估 `dash.js`）
+## 6. 关键流程
+### 6.1 截图一体化流程（MVP）
+1) 用户在左栏点击截图。  
+2) 播放器提取当前帧并落盘至 `assets/`。  
+3) 资源库新增条目（携带时间戳）。  
+4) 右栏笔记自动插入图片引用与时间戳。  
+5) 自动保存笔记。
 
-### 6.2 截图策略
-- 同源/可跨域读取场景：Canvas 抓帧
-- 不可跨域读取场景：提示限制并提供“下载后本地打开”降级路径
+### 6.2 时间戳回跳流程
+1) 在笔记插入 `[hh:mm:ss]`。  
+2) 点击标记后解析到毫秒。  
+3) 左栏播放器跳转并继续播放。
 
-### 6.3 播放抽象
-```ts
-interface PlaybackPort {
-  open(source: SourceDescriptor): Promise<void>
-  pause(paused: boolean): Promise<void>
-  seekMs(ms: number, mode?: "absolute" | "relative"): Promise<void>
-  setSpeed(rate: number): Promise<void>
-  setVolume(vol: number): Promise<void>
-  screenshot(path: string): Promise<void>
-  subscribe(cb: (event: PlaybackEvent) => void): () => void
-}
-```
+### 6.3 AB 复读流程（v0.2）
+1) 标记 A 点。  
+2) 标记 B 点并开启循环。  
+3) 到达 B 后自动跳回 A。  
+4) 取消循环后恢复普通播放。
 
----
-
-## 7. 插件系统（Plugin Runtime）
-### 7.1 manifest
-```json
-{
-  "id": "example.plugin",
-  "name": "Noa Example Plugin",
-  "version": "0.1.0",
-  "type": "runtime-plugin",
-  "permissions": { "network": true, "exec": false },
-  "capabilities": ["transform.text", "analyze.media"]
-}
-```
-
-### 7.2 接口
-```ts
-interface RuntimePlugin {
-  id: string
-  capabilities: string[]
-  execute(input: { action: string; payload: unknown }): Promise<unknown>
-}
-```
-
-### 7.3 权限
-- `network`：网络请求
-- `exec`：外部命令（需用户授权 + 白名单）
-
-> 插件运行时的详细规范见：`docs/dev/design/plugin-architecture.md`
+### 6.4 GIF 录制流程（v0.2）
+1) 选择开始/结束或直接读取 AB 区间。  
+2) 调用 `ffmpeg.wasm` 生成 GIF。  
+3) 自动入库并插入笔记。
 
 ---
 
-## 8. 关键流程
-1) Renderer 输入 URL
-### 8.1 来源播放
-1) Renderer 输入来源（本地文件或直链）
-2) Renderer 调播放器 `open`
-3) Main 侧记录来源元数据
-4) Renderer 更新状态并同步到笔记/素材流程
-
-### 8.2 截图→OCR→剪贴板
-1) Renderer 触发截图
-2) Renderer 抓帧并通过 IPC 请求落盘
-3) Main 生成素材卡 + 缩略图 + 入库
-4) OCR 可选执行并回写
-5) Renderer 生成模板文本并复制到系统剪贴板
-
-### 8.3 导出
-1) 读取 session + asset 关系
-2) 复制 assets
-3) 输出会话摘要 Markdown 文件
+## 7. 非目标与约束
+- 当前阶段不实现复杂编辑器能力（表格、公式、版式系统）。
+- 当前阶段不实现云同步、账号、服务端转码。
+- AI 与插件能力均不阻塞核心本地工作流。
 
 ---
 
-## 9. 测试策略
-- 单元测试：服务层与 IPC 参数校验
-- 集成测试：播放控制、截图、导出
-- 手工验证：Wayland/X11 UI 行为一致性
-- 可用性基线：新增 Web 播放能力测试（含跨域截图限制验证）
+## 8. 测试重点
+- 三栏布局在常见分辨率下稳定展示。
+- 截图→入库→插入笔记链路正确。
+- 自动保存在异常关闭后可恢复。
+- 时间戳与 AB 标记点击行为正确。
+- 多屏模式下副屏不抢焦点、主控制持续可用。
 
 ---
 
-## 10. 里程碑
-- M1：Electron 基础骨架 + 浏览器播放控制 + 截图
-- M2：框选 + 素材库 + OCR
-- M3：剪贴板复制 + 时间戳回跳 + 导出
-- M4：插件框架 + AI 文本处理
-- M5：打包发布 + 稳定性优化
-
----
-
-## 11. 编辑器实现参考（Novel）
-
-### 11.1 参考范围与原则
-- 参考对象：`steven-tey/novel` 的编辑体验与模块组织方式
-- 仅参考：架构思路、交互模式、扩展拆分策略
-- 不直接复制：业务代码、样式细节与品牌设计
-- 必须适配：Noa Studio 的时间戳、素材卡、IPC 导出与播放器联动
-
-### 11.2 推荐模块拆分（Renderer）
-```text
-src/
-  editor/
-    core/
-      editor.ts
-      extensions.ts
-      schema.ts
-    extensions/
-      timestamp.ts
-      asset-card.ts
-      slash-command.ts
-      ai-assistant.ts
-    ui/
-      editor-shell.tsx
-      toolbar.tsx
-      bubble-menu.tsx
-      slash-menu.tsx
-    serialization/
-      to-markdown.ts
-      from-markdown.ts
-```
-
-### 11.3 Noa Studio 专有扩展定义
-- `timestamp` 节点：保存 `ms/sourceId/label`，点击触发播放器 seek
-- `asset-card` 节点：保存 `assetId/imagePath/ocrText`，支持回跳与替换
-- `slash-command`：输入 `/` 插入时间戳、素材卡、OCR 片段、AI 操作
-- `ai-assistant`：对选区文本触发 summarize/translate 并回写
-
-### 11.4 数据与导出链路
-- 编辑态：Tiptap JSON（便于扩展节点）
-- 存储态：`notes.content_md` 为主，补充 `notes.content_json` 作为可选缓存
-- 导入：Markdown -> Tiptap JSON（`remark` + 自定义节点映射）
-- 导出：Tiptap JSON -> Markdown（确保时间戳和素材引用可还原）
-
-### 11.5 分阶段实施
-- Phase A：编辑器壳 + 基础扩展（paragraph/heading/list/code/link/image）
-- Phase B：时间戳节点 + 素材卡节点 + 播放器回跳
-- Phase C：Slash 命令与 AI 入口
-- Phase D：Markdown 双向转换与导出一致性测试
-
-> 详细排期与工单粒度拆分见：`docs/dev/roadmap/development-roadmap.md`
+## 9. 与路线图对齐
+- MVP：三栏 + 播放 + 时间戳 + 截图 + 资源库 + 极简编辑器 + 工程文件夹 + OCR。
+- Iteration：GIF、AB 增强、多屏增强、AI 增强、插件与生态能力。
