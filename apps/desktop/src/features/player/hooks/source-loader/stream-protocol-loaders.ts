@@ -1,5 +1,6 @@
 import Hls from 'hls.js';
 import * as dashjs from 'dashjs';
+import i18n from '../../../../i18n';
 import type { SourceLoaderCallbacks } from './types';
 
 export function loadHlsSource(params: {
@@ -15,16 +16,16 @@ export function loadHlsSource(params: {
     hls.attachMedia(video);
     hls.on(Hls.Events.MEDIA_ATTACHED, () => {
         hls.loadSource(sourceUrl);
-        callbacks.onFeedback('已使用 hls.js 加载 m3u8 流。');
-        callbacks.onToast('已启用 HLS 流播放（m3u8）。', 'info');
+        callbacks.onFeedback(i18n.t('feedback.hlsLoaded'));
+        callbacks.onToast(i18n.t('feedback.hlsLoadedToast'), 'info');
     });
     hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!data.fatal) {
             return;
         }
 
-        const reason = `HLS 致命错误：${data.type}/${data.details}`;
-        callbacks.onFeedback(`播放失败：${reason}`);
+        const reason = i18n.t('feedback.hlsFatalError', { type: data.type, details: data.details });
+        callbacks.onFeedback(i18n.t('feedback.playbackFailed', { reason }));
         callbacks.onToast(reason, 'error');
         if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             hls.recoverMediaError();
@@ -47,11 +48,11 @@ export function loadDashSource(params: {
 
     player.initialize(video, sourceUrl, false);
     player.on(dashjs.MediaPlayer.events.ERROR, (event: { error?: { message?: string } }) => {
-        const reason = `DASH 错误：${event?.error?.message ?? '未知异常'}`;
-        callbacks.onFeedback(`播放失败：${reason}`);
+        const reason = i18n.t('feedback.dashError', { message: event?.error?.message ?? i18n.t('feedback.unknownError') });
+        callbacks.onFeedback(i18n.t('feedback.playbackFailed', { reason }));
         callbacks.onToast(reason, 'error');
     });
 
-    callbacks.onFeedback('已使用 dash.js 加载 mpd 流。');
-    callbacks.onToast('已启用 DASH 流播放（mpd）。', 'info');
+    callbacks.onFeedback(i18n.t('feedback.dashLoaded'));
+    callbacks.onToast(i18n.t('feedback.dashLoadedToast'), 'info');
 }

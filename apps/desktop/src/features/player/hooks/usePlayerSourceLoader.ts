@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import Hls from 'hls.js';
 import { noaDesktopClient } from '../../../ipc';
+import i18n from '../../../i18n';
 import {
     isM3u8Source,
     isM4sSource,
@@ -36,6 +37,12 @@ export function usePlayerSourceLoader({
     const hlsRef = useRef<Hls | null>(null);
     const dashRef = useRef<any>(null);
     const objectUrlRef = useRef<string | null>(null);
+    const expectedSourceUrlRef = useRef<string | null>(null);
+    const fallbackSourceUrlRef = useRef<string | null>(null);
+    const hasRetriedWithFallbackRef = useRef(false);
+    const lastVideoErrorRef = useRef<{ source: string; code: number; at: number } | null>(null);
+    const suppressVideoErrorUntilRef = useRef(0);
+    const fatalSourceRef = useRef<string | null>(null);
 
     const callbacks: SourceLoaderCallbacks = {
         onFeedback,
@@ -55,17 +62,45 @@ export function usePlayerSourceLoader({
         }
     };
 
-    const applyVideoSource = async (nextSourceUrl: string) => {
+    const applyVideoSource = async (nextSourceUrl: string, fallbackSourceUrl?: string) => {
         const video = videoRef.current;
         if (!video) {
+            return;
+        }
+
+        fallbackSourceUrlRef.current = fallbackSourceUrl ?? null;
+        hasRetriedWithFallbackRef.current = false;
+        lastVideoErrorRef.current = null;
+        fatalSourceRef.current = null;
+        suppressVideoErrorUntilRef.current = Date.now() + 1200;
+
+        const trimmedSource = nextSourceUrl.trim();
+        const isLocalLikeSource = /^(blob:|file:|data:)/i.test(trimmedSource);
+
+        if (isLocalLikeSource) {
+            expectedSourceUrlRef.current = trimmedSource;
+            releaseVideoSource();
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+
+            video.src = trimmedSource;
+            video.load();
+            setSourceUrl(trimmedSource);
+            setCurrentTimeMs(0);
+            setDurationMs(0);
+            setPlaying(false);
+            setBuffering(false);
+            onFeedback(i18n.t('feedback.sourceLoaded'));
+            onToast(i18n.t('feedback.sourceLoadedToast'), 'success');
             return;
         }
 
         const parsedSource = parseSourceInput(nextSourceUrl);
         const sourceEntries = parsedSource.entries;
         if (!sourceEntries.length) {
-            onFeedback('未识别到有效输入，请粘贴直链或符合约定的 JSON 源配置。');
-            onToast('未识别到有效 URL。', 'error');
+            onFeedback(i18n.t('feedback.sourceInputInvalid'));
+            onToast(i18n.t('feedback.sourceUrlInvalid'), 'error');
             return;
         }
 
@@ -81,8 +116,8 @@ export function usePlayerSourceLoader({
         if (mediaHeaderItems.length > 0) {
             const registerResult = await noaDesktopClient.registerMediaHeaders({ items: mediaHeaderItems });
             if (!registerResult.ok) {
-                onFeedback(`媒体请求头注册失败：${registerResult.error.message}`);
-                onToast('媒体请求头注册失败，可能导致部分链接 403。', 'error');
+                onFeedback(i18n.t('feedback.mediaHeaderRegisterFailed', { message: registerResult.error.message }));
+                onToast(i18n.t('feedback.mediaHeaderRegisterFailedToast'), 'error');
             }
         }
 
@@ -96,12 +131,13 @@ export function usePlayerSourceLoader({
             && audioDirectEntries.length === 1;
 
         if (sourceEntries.length > 1 && !isMultiM4s && !isDualDirectSource) {
-            onFeedback('多链接模式仅支持：双直链（1 视频 + 1 音频）或 m4s 分片。');
-            onToast('多链接格式不支持：请使用双直链或 m4s 分片。', 'error');
+            onFeedback(i18n.t('feedback.multiSourceUnsupported'));
+            onToast(i18n.t('feedback.multiSourceUnsupportedToast'), 'error');
             return;
         }
 
         const resolvedSourceUrl = sourceEntries.length === 1 ? sourceEntries[0].url : nextSourceUrl;
+        expectedSourceUrlRef.current = resolvedSourceUrl;
 
         releaseVideoSource();
         video.pause();
@@ -119,8 +155,8 @@ export function usePlayerSourceLoader({
             }));
 
             if (audioSegmentRequests.length > 0 && videoSegmentRequests.length === 0) {
-                onFeedback('播放失败：检测到音频分片，但缺少视频分片。');
-                onToast('多分片加载失败：缺少视频分片。', 'error');
+                onFeedback(i18n.t('feedback.missingVideoSegment'));
+                onToast(i18n.t('feedback.missingVideoSegmentToast'), 'error');
                 return;
             }
 
@@ -142,14 +178,14 @@ export function usePlayerSourceLoader({
                     });
                 }
             } catch (error) {
-                const message = error instanceof Error ? error.message : '未知错误';
-                onFeedback(`播放失败：m4s 多分片加载失败：${message}`);
-                onToast(`m4s 多分片加载失败：${message}`, 'error');
+                const message = error instanceof Error ? error.message : i18n.t('feedback.unknownError');
+                onFeedback(i18n.t('feedback.m4sLoadFailed', { message }));
+                onToast(i18n.t('feedback.m4sLoadFailedToast', { message }), 'error');
                 return;
             }
         } else if (isDualDirectSource) {
-            onFeedback('检测到双直链输入（1 视频 + 1 音频），正在使用 MSE 合流加载。');
-            onToast('检测到双直链，正在合流加载。', 'info');
+            onFeedback(i18n.t('feedback.dualDirectDetected'));
+            onToast(i18n.t('feedback.dualDirectDetectedToast'), 'info');
             try {
                 await loadDualTrackDirectSource({
                     video,
@@ -161,9 +197,9 @@ export function usePlayerSourceLoader({
                     callbacks,
                 });
             } catch (error) {
-                const message = error instanceof Error ? error.message : '未知错误';
-                onFeedback(`播放失败：双直链加载失败：${message}`);
-                onToast(`双直链加载失败：${message}`, 'error');
+                const message = error instanceof Error ? error.message : i18n.t('feedback.unknownError');
+                onFeedback(i18n.t('feedback.dualDirectLoadFailed', { message }));
+                onToast(i18n.t('feedback.dualDirectLoadFailedToast', { message }), 'error');
                 return;
             }
         } else if (isM3u8Source(resolvedSourceUrl) && Hls.isSupported()) {
@@ -181,12 +217,13 @@ export function usePlayerSourceLoader({
                 callbacks,
             });
         } else if (isM4sSource(resolvedSourceUrl)) {
-            const reason = 'm4s 为分片流片段，通常不能单独播放，请改用 mpd/m3u8 或完整 mp4 直链。';
-            onFeedback(`播放失败：${reason}`);
+            const reason = i18n.t('feedback.m4sSingleUnsupported');
+            onFeedback(i18n.t('feedback.playbackFailed', { reason }));
             onToast(reason, 'error');
             return;
         } else {
             video.src = resolvedSourceUrl;
+            video.load();
         }
 
         if (isMultiM4s) {
@@ -209,18 +246,81 @@ export function usePlayerSourceLoader({
         if (!isMultiM4s) {
             if (parsedSource.fromYtDlpJson) {
                 const titleSuffix = parsedSource.title ? `：${parsedSource.title}` : '';
-                onFeedback(`已加载 JSON 视频源${titleSuffix}，可进行播放与截图。`);
+                onFeedback(i18n.t('feedback.sourceLoadedJson', { titleSuffix }));
             } else {
-                onFeedback('视频已加载，可进行播放与截图。');
+                onFeedback(i18n.t('feedback.sourceLoaded'));
             }
-            onToast('视频源已加载。', 'success');
+            onToast(i18n.t('feedback.sourceLoadedToast'), 'success');
         }
     };
 
     const onVideoError = () => {
-        const reason = getMediaErrorMessage(videoRef.current?.error ?? null);
-        onFeedback(`播放失败：${reason}`);
-        onToast(`播放失败：${reason}`, 'error');
+        if (Date.now() < suppressVideoErrorUntilRef.current) {
+            return;
+        }
+
+        const currentSourceUrl = videoRef.current?.currentSrc || videoRef.current?.src || null;
+        if (!currentSourceUrl || currentSourceUrl === 'about:blank') {
+            return;
+        }
+
+        if (fatalSourceRef.current === currentSourceUrl) {
+            return;
+        }
+
+        const mediaErrorCode = videoRef.current?.error?.code ?? 0;
+        const lastVideoError = lastVideoErrorRef.current;
+        const now = Date.now();
+        if (
+            lastVideoError
+            && lastVideoError.source === currentSourceUrl
+            && lastVideoError.code === mediaErrorCode
+            && now - lastVideoError.at < 1800
+        ) {
+            return;
+        }
+        lastVideoErrorRef.current = {
+            source: currentSourceUrl,
+            code: mediaErrorCode,
+            at: now,
+        };
+
+        const reason = getMediaErrorMessage(videoRef.current?.error ?? null, currentSourceUrl);
+        const sourceProtocol = currentSourceUrl.split(':')[0] || 'unknown';
+        if (
+            mediaErrorCode === 4
+            && sourceProtocol === 'blob'
+            && fallbackSourceUrlRef.current
+            && !hasRetriedWithFallbackRef.current
+        ) {
+            hasRetriedWithFallbackRef.current = true;
+            const fallback = fallbackSourceUrlRef.current;
+            fallbackSourceUrlRef.current = null;
+            onFeedback(i18n.t('feedback.localBlobFallbackRetry'));
+            onToast(i18n.t('feedback.localBlobFallbackRetryToast'), 'info');
+            void applyVideoSource(fallback);
+            return;
+        }
+
+        const expectedSource = expectedSourceUrlRef.current;
+        const shouldAttachDebug = sourceProtocol === 'blob' || sourceProtocol === 'file' || sourceProtocol === 'data';
+        const debugSuffix = shouldAttachDebug
+            ? ` (code=${mediaErrorCode}, protocol=${sourceProtocol}${expectedSource ? `, expected=${expectedSource.split(':')[0]}` : ''})`
+            : '';
+        const message = i18n.t('feedback.playbackFailed', { reason: `${reason}${debugSuffix}` });
+        onFeedback(message);
+        onToast(message, 'error');
+
+        fatalSourceRef.current = currentSourceUrl;
+        suppressVideoErrorUntilRef.current = Date.now() + 3000;
+        const video = videoRef.current;
+        if (video) {
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
+        }
+        setPlaying(false);
+        setBuffering(false);
     };
 
     return {

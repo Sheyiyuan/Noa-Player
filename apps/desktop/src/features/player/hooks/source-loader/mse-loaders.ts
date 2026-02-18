@@ -1,4 +1,5 @@
 import type { SourceLoaderCallbacks } from './types';
+import i18n from '../../../../i18n';
 
 type SourceRequest = {
     url: string;
@@ -39,7 +40,7 @@ function appendBufferAndWait(sourceBuffer: SourceBuffer, buffer: ArrayBuffer): P
 
         const onError = () => {
             cleanup();
-            reject(new Error('分片追加失败：SourceBuffer 错误'));
+            reject(new Error(i18n.t('feedback.mseAppendFailed')));
         };
 
         sourceBuffer.addEventListener('updateend', onUpdateEnd);
@@ -49,7 +50,7 @@ function appendBufferAndWait(sourceBuffer: SourceBuffer, buffer: ArrayBuffer): P
             sourceBuffer.appendBuffer(buffer);
         } catch (error) {
             cleanup();
-            reject(error instanceof Error ? error : new Error('分片追加失败：未知异常'));
+            reject(error instanceof Error ? error : new Error(i18n.t('feedback.mseAppendUnknown')));
         }
     });
 }
@@ -63,16 +64,16 @@ export async function loadMergedM4sSource(params: {
     const { video, segmentRequests, objectUrlRef, callbacks } = params;
 
     if (!('MediaSource' in window)) {
-        throw new Error('当前环境不支持 MediaSource，无法播放 m4s 分片');
+        throw new Error(i18n.t('feedback.mseNotSupportedM4s'));
     }
 
-    callbacks.onToast(`正在流式加载 ${segmentRequests.length} 个 m4s 分片...`, 'info');
+    callbacks.onToast(i18n.t('feedback.mseLoadingSegments', { count: segmentRequests.length }), 'info');
 
     const firstResponse = await fetch(segmentRequests[0].url, {
         headers: segmentRequests[0].requestHeaders,
     });
     if (!firstResponse.ok) {
-        throw new Error(`分片 1 下载失败（HTTP ${firstResponse.status}）`);
+        throw new Error(i18n.t('feedback.mseSegmentDownloadFailed', { index: 1, status: firstResponse.status }));
     }
     const firstBuffer = await firstResponse.arrayBuffer();
 
@@ -89,7 +90,7 @@ export async function loadMergedM4sSource(params: {
     ].filter((mimeType) => MediaSource.isTypeSupported(mimeType));
 
     if (!videoMimeCandidates.length) {
-        throw new Error('浏览器不支持当前 m4s 编码，无法创建 SourceBuffer');
+        throw new Error(i18n.t('feedback.mseCodecUnsupported'));
     }
 
     let selectedObjectUrl: string | null = null;
@@ -130,19 +131,19 @@ export async function loadMergedM4sSource(params: {
 
     if (!selectedObjectUrl || !mediaSource || !sourceBuffer) {
         const reason = lastError instanceof Error ? `：${lastError.message}` : '';
-        throw new Error(`无法识别单轨 m4s 编码${reason}`);
+        throw new Error(i18n.t('feedback.mseSingleTrackCodecDetectFailed', { reason }));
     }
 
     objectUrlRef.current = selectedObjectUrl;
     void video.play().catch(() => undefined);
 
     for (let index = 1; index < segmentRequests.length; index += 1) {
-        callbacks.onFeedback(`正在流式下载视频分片 ${index + 1}/${segmentRequests.length}...`);
+        callbacks.onFeedback(i18n.t('feedback.mseDownloadingVideoSegment', { index: index + 1, total: segmentRequests.length }));
         const response = await fetch(segmentRequests[index].url, {
             headers: segmentRequests[index].requestHeaders,
         });
         if (!response.ok) {
-            throw new Error(`分片 ${index + 1} 下载失败（HTTP ${response.status}）`);
+            throw new Error(i18n.t('feedback.mseSegmentDownloadFailed', { index: index + 1, status: response.status }));
         }
 
         await appendBufferAndWait(sourceBuffer, await response.arrayBuffer());
@@ -154,8 +155,8 @@ export async function loadMergedM4sSource(params: {
         mediaSource.endOfStream();
     }
 
-    callbacks.onFeedback(`m4s 流式加载完成（${segmentRequests.length} 个，${selectedMimeType}）。`);
-    callbacks.onToast(`m4s 流式加载完成（${segmentRequests.length} 个）。`, 'success');
+    callbacks.onFeedback(i18n.t('feedback.mseMergedLoadDone', { count: segmentRequests.length, mimeType: selectedMimeType }));
+    callbacks.onToast(i18n.t('feedback.mseMergedLoadDoneToast', { count: segmentRequests.length }), 'success');
     return selectedObjectUrl;
 }
 
@@ -169,20 +170,23 @@ export async function loadDualTrackM4sSource(params: {
     const { video, videoSegmentRequests, audioSegmentRequests, objectUrlRef, callbacks } = params;
 
     if (!('MediaSource' in window)) {
-        throw new Error('当前环境不支持 MediaSource，无法播放双轨 m4s');
+        throw new Error(i18n.t('feedback.mseNotSupportedDualTrackM4s'));
     }
 
-    callbacks.onToast(`正在加载双轨分片（视频 ${videoSegmentRequests.length}，音频 ${audioSegmentRequests.length}）...`, 'info');
+    callbacks.onToast(i18n.t('feedback.mseLoadingDualTrack', {
+        videoCount: videoSegmentRequests.length,
+        audioCount: audioSegmentRequests.length,
+    }), 'info');
 
     const [videoFirstResponse, audioFirstResponse] = await Promise.all([
         fetch(videoSegmentRequests[0].url, { headers: videoSegmentRequests[0].requestHeaders }),
         fetch(audioSegmentRequests[0].url, { headers: audioSegmentRequests[0].requestHeaders }),
     ]);
     if (!videoFirstResponse.ok) {
-        throw new Error(`视频分片 1 下载失败（HTTP ${videoFirstResponse.status}）`);
+        throw new Error(i18n.t('feedback.mseVideoSegmentDownloadFailed', { index: 1, status: videoFirstResponse.status }));
     }
     if (!audioFirstResponse.ok) {
-        throw new Error(`音频分片 1 下载失败（HTTP ${audioFirstResponse.status}）`);
+        throw new Error(i18n.t('feedback.mseAudioSegmentDownloadFailed', { index: 1, status: audioFirstResponse.status }));
     }
 
     const [videoFirstBuffer, audioFirstBuffer] = await Promise.all([videoFirstResponse.arrayBuffer(), audioFirstResponse.arrayBuffer()]);
@@ -207,7 +211,7 @@ export async function loadDualTrackM4sSource(params: {
     ].filter((mimeType) => MediaSource.isTypeSupported(mimeType));
 
     if (!videoMimeCandidates.length || !audioMimeCandidates.length) {
-        throw new Error('浏览器不支持当前 m4s 编码，无法创建双轨 SourceBuffer');
+        throw new Error(i18n.t('feedback.mseDualTrackCodecUnsupported'));
     }
 
     let lastError: unknown = null;
@@ -260,30 +264,30 @@ export async function loadDualTrackM4sSource(params: {
 
     if (!selectedPair || !selectedObjectUrl || !selectedMediaSource || !selectedVideoBuffer || !selectedAudioBuffer) {
         const reason = lastError instanceof Error ? `：${lastError.message}` : '';
-        throw new Error(`双轨 m4s 解码失败，已尝试多种编码组合${reason}`);
+        throw new Error(i18n.t('feedback.mseDualTrackDecodeFailed', { reason }));
     }
 
     objectUrlRef.current = selectedObjectUrl;
     void video.play().catch(() => undefined);
 
     for (let index = 1; index < videoSegmentRequests.length; index += 1) {
-        callbacks.onFeedback(`正在流式下载视频分片 ${index + 1}/${videoSegmentRequests.length}...`);
+        callbacks.onFeedback(i18n.t('feedback.mseDownloadingVideoSegment', { index: index + 1, total: videoSegmentRequests.length }));
         const response = await fetch(videoSegmentRequests[index].url, {
             headers: videoSegmentRequests[index].requestHeaders,
         });
         if (!response.ok) {
-            throw new Error(`视频分片 ${index + 1} 下载失败（HTTP ${response.status}）`);
+            throw new Error(i18n.t('feedback.mseVideoSegmentDownloadFailed', { index: index + 1, status: response.status }));
         }
         await appendBufferAndWait(selectedVideoBuffer, await response.arrayBuffer());
     }
 
     for (let index = 1; index < audioSegmentRequests.length; index += 1) {
-        callbacks.onFeedback(`正在流式下载音频分片 ${index + 1}/${audioSegmentRequests.length}...`);
+        callbacks.onFeedback(i18n.t('feedback.mseDownloadingAudioSegment', { index: index + 1, total: audioSegmentRequests.length }));
         const response = await fetch(audioSegmentRequests[index].url, {
             headers: audioSegmentRequests[index].requestHeaders,
         });
         if (!response.ok) {
-            throw new Error(`音频分片 ${index + 1} 下载失败（HTTP ${response.status}）`);
+            throw new Error(i18n.t('feedback.mseAudioSegmentDownloadFailed', { index: index + 1, status: response.status }));
         }
         await appendBufferAndWait(selectedAudioBuffer, await response.arrayBuffer());
     }
@@ -294,8 +298,14 @@ export async function loadDualTrackM4sSource(params: {
         selectedMediaSource.endOfStream();
     }
 
-    callbacks.onFeedback(`双轨 m4s 加载完成（视频 ${videoSegmentRequests.length}，音频 ${audioSegmentRequests.length}）。`);
-    callbacks.onToast(`双轨 m4s 加载完成（${selectedPair.video} / ${selectedPair.audio}）。`, 'success');
+    callbacks.onFeedback(i18n.t('feedback.mseDualTrackLoadDone', {
+        videoCount: videoSegmentRequests.length,
+        audioCount: audioSegmentRequests.length,
+    }));
+    callbacks.onToast(i18n.t('feedback.mseDualTrackLoadDoneToast', {
+        videoCodec: selectedPair.video,
+        audioCodec: selectedPair.audio,
+    }), 'success');
     return selectedObjectUrl;
 }
 
@@ -311,10 +321,10 @@ export async function loadDualTrackDirectSource(params: {
     const { video, videoUrl, audioUrl, videoHeaders, audioHeaders, objectUrlRef, callbacks } = params;
 
     if (!('MediaSource' in window)) {
-        throw new Error('当前环境不支持 MediaSource，无法播放双直链音视频');
+        throw new Error(i18n.t('feedback.mseNotSupportedDualDirect'));
     }
 
-    callbacks.onToast('正在加载双直链音视频（MSE）...', 'info');
+    callbacks.onToast(i18n.t('feedback.mseLoadingDualDirect'), 'info');
 
     let videoResponse: Response;
     let audioResponse: Response;
@@ -325,14 +335,14 @@ export async function loadDualTrackDirectSource(params: {
             fetch(audioUrl, { headers: audioHeaders }),
         ]);
     } catch (error) {
-        const reason = error instanceof Error ? error.message : '未知网络异常';
-        throw new Error(`直链请求失败（可能为链接过期或鉴权头缺失）：${reason}`);
+        const reason = error instanceof Error ? error.message : i18n.t('feedback.mseUnknownNetworkError');
+        throw new Error(i18n.t('feedback.mseDirectRequestFailed', { reason }));
     }
     if (!videoResponse.ok) {
-        throw new Error(`视频直链下载失败（HTTP ${videoResponse.status}）`);
+        throw new Error(i18n.t('feedback.mseVideoSegmentDownloadFailed', { index: 1, status: videoResponse.status }));
     }
     if (!audioResponse.ok) {
-        throw new Error(`音频直链下载失败（HTTP ${audioResponse.status}）`);
+        throw new Error(i18n.t('feedback.mseAudioSegmentDownloadFailed', { index: 1, status: audioResponse.status }));
     }
 
     const [videoBuffer, audioBuffer] = await Promise.all([videoResponse.arrayBuffer(), audioResponse.arrayBuffer()]);
@@ -363,7 +373,7 @@ export async function loadDualTrackDirectSource(params: {
     ].filter((mimeType) => MediaSource.isTypeSupported(mimeType));
 
     if (!videoMimeCandidates.length || !audioMimeCandidates.length) {
-        throw new Error('浏览器不支持当前音视频编码，无法创建双轨 SourceBuffer');
+        throw new Error(i18n.t('feedback.mseAvCodecUnsupported'));
     }
 
     let lastError: unknown = null;
@@ -416,13 +426,16 @@ export async function loadDualTrackDirectSource(params: {
 
     if (!selectedPair || !selectedObjectUrl) {
         const reason = lastError instanceof Error ? `：${lastError.message}` : '';
-        throw new Error(`双直链合流失败，已尝试多种编码组合${reason}`);
+        throw new Error(i18n.t('feedback.mseDualDirectMergeFailed', { reason }));
     }
 
     objectUrlRef.current = selectedObjectUrl;
     void video.play().catch(() => undefined);
 
-    callbacks.onFeedback(`双直链加载完成（${selectedPair.video} / ${selectedPair.audio}）。`);
-    callbacks.onToast('双直链音视频已加载。', 'success');
+    callbacks.onFeedback(i18n.t('feedback.mseDualDirectLoadDone', {
+        videoCodec: selectedPair.video,
+        audioCodec: selectedPair.audio,
+    }));
+    callbacks.onToast(i18n.t('feedback.mseDualDirectLoadDoneToast'), 'success');
     return selectedObjectUrl;
 }

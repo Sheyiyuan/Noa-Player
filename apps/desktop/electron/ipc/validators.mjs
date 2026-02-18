@@ -43,11 +43,14 @@ export function validateSaveCapturePayload(payload) {
         }
     }
 
+    const copyToClipboard = typeof payload.copyToClipboard === 'boolean' ? payload.copyToClipboard : true;
+
     return {
         dataUrl: payload.dataUrl,
         sourceUrl: payload.sourceUrl,
         timestampMs: payload.timestampMs,
         region: payload.region,
+        copyToClipboard,
     };
 }
 

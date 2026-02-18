@@ -40,6 +40,7 @@ export type SaveCapturePayload = {
     sourceUrl: string | null;
     timestampMs: number;
     region?: CaptureRegion;
+    copyToClipboard?: boolean;
 };
 
 export type AssetSummary = {
@@ -114,6 +115,15 @@ export type RegisterMediaHeadersResult = {
     registeredCount: number;
 };
 
+export type LocalVideoFile = {
+    path: string;
+    name: string;
+};
+
+export type PickLocalVideosResult = {
+    items: LocalVideoFile[];
+};
+
 export interface NoaDesktopApi {
     ping: () => Promise<IpcResponse<PingResult>>;
     getVersions: () => Promise<IpcResponse<AppVersions>>;
@@ -125,6 +135,7 @@ export interface NoaDesktopApi {
     openAssetInFolder: (payload: AssetActionPayload) => Promise<IpcResponse<AssetOpenFolderResult>>;
     deleteAsset: (payload: AssetActionPayload) => Promise<IpcResponse<AssetDeleteResult>>;
     recognizeAssetOcr: (payload: RecognizeAssetOcrPayload) => Promise<IpcResponse<RecognizeAssetOcrResult>>;
+    pickLocalVideos: () => Promise<IpcResponse<PickLocalVideosResult>>;
     exportSession: (payload: ExportSessionPayload) => Promise<IpcResponse<ExportSessionResult>>;
     exportMarkdown: (payload: ExportMarkdownPayload) => Promise<IpcResponse<ExportMarkdownResult>>;
     registerMediaHeaders: (payload: RegisterMediaHeadersPayload) => Promise<IpcResponse<RegisterMediaHeadersResult>>;

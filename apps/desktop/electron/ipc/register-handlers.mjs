@@ -1,4 +1,5 @@
-import { ipcMain, shell } from 'electron';
+import { dialog, ipcMain, shell } from 'electron';
+import path from 'node:path';
 import { IPC_CHANNELS } from './channels.mjs';
 import { wrapIpcHandler } from './ipc-response.mjs';
 import {
@@ -134,6 +135,30 @@ export function registerIpcHandlers() {
         handle: async (payload) => ({
             registeredCount: registerMediaHeaderOverrides(payload.items),
         }),
+    });
+
+    registerChannel(IPC_CHANNELS.MEDIA_PICK_LOCAL_VIDEOS, {
+        handle: async (_payload, event) => {
+            const window = getSenderWindow(event);
+            const result = await dialog.showOpenDialog(window ?? undefined, {
+                properties: ['openFile', 'multiSelections'],
+                filters: [
+                    { name: 'Videos', extensions: ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'avi', 'wmv', 'flv', 'm2ts', 'ts'] },
+                    { name: 'All Files', extensions: ['*'] },
+                ],
+            });
+
+            if (result.canceled || !result.filePaths.length) {
+                return { items: [] };
+            }
+
+            return {
+                items: result.filePaths.map((filePath) => ({
+                    path: filePath,
+                    name: path.basename(filePath),
+                })),
+            };
+        },
     });
 
     const exportSessionConfig = {

@@ -23,6 +23,7 @@ export type {
     RecognizeAssetOcrPayload,
     RecognizeAssetOcrResult,
     NoaDesktopApi,
+    PickLocalVideosResult,
     PingResult,
     SaveCapturePayload,
     SaveCaptureResult,
@@ -47,6 +48,7 @@ export const noaDesktopClient: NoaDesktopApi = {
 
         return method(payload);
     }),
+    pickLocalVideos: () => invokeIpc(() => window.noaDesktop.pickLocalVideos()),
     registerMediaHeaders: (payload) => invokeIpc(() => window.noaDesktop.registerMediaHeaders(payload)),
     exportSession: (payload: ExportSessionPayload) => invokeIpc(() => window.noaDesktop.exportSession(payload)),
     exportMarkdown: (payload: ExportSessionPayload) => invokeIpc(() => window.noaDesktop.exportMarkdown(payload)),

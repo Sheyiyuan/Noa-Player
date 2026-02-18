@@ -162,7 +162,6 @@ export async function saveCaptureAsset(payload) {
     const imagePath = path.join(imageDir, fileName);
 
     await fs.writeFile(imagePath, parsedImage.buffer);
-    clipboard.writeImage(nativeImage.createFromBuffer(parsedImage.buffer));
 
     const items = await readIndex();
     const item = {
@@ -177,6 +176,10 @@ export async function saveCaptureAsset(payload) {
 
     const nextItems = [item, ...items];
     await writeIndex(nextItems);
+
+    if (payload.copyToClipboard !== false) {
+        clipboard.writeImage(nativeImage.createFromBuffer(parsedImage.buffer));
+    }
 
     return {
         asset: await mapAssetRecordWithPreview(item, payload.dataUrl),

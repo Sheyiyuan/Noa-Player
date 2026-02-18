@@ -30,8 +30,8 @@ function extractRequestHeaders(raw: unknown): Record<string, string> | undefined
     return Object.fromEntries(entries);
 }
 
-function isHttpUrl(value: string): boolean {
-    return /^https?:\/\//i.test(value.trim());
+function isSupportedSourceUrl(value: string): boolean {
+    return /^(https?:\/\/|blob:|file:|data:)/i.test(value.trim());
 }
 
 function inferTrackFromUrl(url: string): SegmentTrack {
@@ -83,7 +83,7 @@ function parseSegmentInputEntries(input: string): SegmentInputEntry[] {
         .map((line): SegmentInputEntry | null => {
             const prefixed = /^(video|v|audio|a)\s*[:|]\s*(.+)$/i.exec(line);
             if (!prefixed) {
-                if (!isHttpUrl(line)) {
+                if (!isSupportedSourceUrl(line)) {
                     return null;
                 }
 
@@ -94,7 +94,7 @@ function parseSegmentInputEntries(input: string): SegmentInputEntry[] {
             }
 
             const rawUrl = prefixed[2].trim();
-            if (!isHttpUrl(rawUrl)) {
+            if (!isSupportedSourceUrl(rawUrl)) {
                 return null;
             }
 
@@ -151,7 +151,7 @@ function toSegmentInputEntry(params: {
 function parseEntriesFromYtDlpJson(payload: Record<string, unknown>): SegmentInputEntry[] {
     const rootHeaders = extractRequestHeaders(payload.http_headers);
     const manifestUrl = typeof payload.manifest_url === 'string' ? payload.manifest_url.trim() : '';
-    if (manifestUrl && isHttpUrl(manifestUrl)) {
+    if (manifestUrl && isSupportedSourceUrl(manifestUrl)) {
         return [{ url: manifestUrl, track: 'auto', requestHeaders: rootHeaders }];
     }
 
@@ -163,7 +163,7 @@ function parseEntriesFromYtDlpJson(payload: Record<string, unknown>): SegmentInp
         const entries = requestedFormats
             .map((format): SegmentInputEntry | null => {
                 const url = typeof format.url === 'string' ? format.url.trim() : '';
-                if (!isHttpUrl(url)) {
+                if (!isSupportedSourceUrl(url)) {
                     return null;
                 }
 
@@ -188,7 +188,7 @@ function parseEntriesFromYtDlpJson(payload: Record<string, unknown>): SegmentInp
         const entries = requestedDownloads
             .map((download): SegmentInputEntry | null => {
                 const url = typeof download.url === 'string' ? download.url.trim() : '';
-                if (!isHttpUrl(url)) {
+                if (!isSupportedSourceUrl(url)) {
                     return null;
                 }
 
@@ -210,7 +210,7 @@ function parseEntriesFromYtDlpJson(payload: Record<string, unknown>): SegmentInp
     }
 
     const directUrl = typeof payload.url === 'string' ? payload.url.trim() : '';
-    if (isHttpUrl(directUrl)) {
+    if (isSupportedSourceUrl(directUrl)) {
         return [{ url: directUrl, track: inferTrackFromUrl(directUrl), requestHeaders: rootHeaders }];
     }
 
@@ -274,7 +274,7 @@ function parseCompactJsonInput(input: string): ParsedSourceInput | null {
 
                 const sourceRecord = source as Record<string, unknown>;
                 const url = typeof sourceRecord.url === 'string' ? sourceRecord.url.trim() : '';
-                if (!isHttpUrl(url)) {
+                if (!isSupportedSourceUrl(url)) {
                     return null;
                 }
 
