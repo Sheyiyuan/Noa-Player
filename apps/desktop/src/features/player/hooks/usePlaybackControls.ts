@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react';
+import i18n from '../../../i18n';
 
 type Params = {
     videoRef: RefObject<HTMLVideoElement | null>;
@@ -59,8 +60,8 @@ export function usePlaybackControls({
             video.pause();
             setPlaying(false);
         } catch {
-            onFeedback('播放失败：请检查视频地址或编码格式。');
-            onToast('播放启动失败：请检查文件是否损坏或格式是否受支持。', 'error');
+            onFeedback(i18n.t('feedback.playbackStartFailed'));
+            onToast(i18n.t('feedback.playbackStartFailedToast'), 'error');
         }
     };
 

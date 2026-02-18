@@ -1,4 +1,5 @@
 import { useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import i18n from '../../../i18n';
 import type { Rect } from '../ui/types';
 
 type Params = {
@@ -33,8 +34,8 @@ export function useRegionSelection({ onFeedback, onToast, onCaptureRegion }: Par
         setIsRegionMode(true);
         setDragStart(null);
         setDragCurrent(null);
-        onFeedback('区域截图模式：请在视频上拖拽选区。');
-        onToast('已进入区域截图模式。', 'info');
+        onFeedback(i18n.t('feedback.regionMode'));
+        onToast(i18n.t('feedback.regionModeToast'), 'info');
     };
 
     const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {

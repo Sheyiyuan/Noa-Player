@@ -1,4 +1,5 @@
 import { noaDesktopClient } from '../../../../ipc';
+import i18n from '../../../../i18n';
 
 type Params = {
     isOcrRunning: boolean;
@@ -21,8 +22,8 @@ export function useOcrActions({
         }
 
         setIsOcrRunning(true);
-        onFeedback('正在执行截图并调用后端 OCR，请稍候...');
-        onToast('OCR 处理中（后端识别）...', 'info');
+        onFeedback(i18n.t('feedback.ocrProcessing'));
+        onToast(i18n.t('feedback.ocrProcessing'), 'info');
 
         try {
             const asset = await captureFullFrame();
@@ -37,29 +38,29 @@ export function useOcrActions({
             });
 
             if (!result.ok) {
-                onFeedback(`OCR 失败：${result.error.message}`);
-                onToast(`OCR 失败：${result.error.message}`, 'error');
+                onFeedback(i18n.t('feedback.ocrFailed', { message: result.error.message }));
+                onToast(i18n.t('feedback.ocrFailed', { message: result.error.message }), 'error');
                 return;
             }
 
             if (!result.data.success) {
-                onFeedback(`OCR 失败：${result.data.message}`);
-                onToast(`OCR 失败：${result.data.message}`, 'error');
+                onFeedback(i18n.t('feedback.ocrFailed', { message: result.data.message }));
+                onToast(i18n.t('feedback.ocrFailed', { message: result.data.message }), 'error');
                 return;
             }
 
             const text = result.data.text.trim();
             if (!text) {
                 onFeedback(result.data.message);
-                onToast('OCR 未识别到有效文本。', 'info');
+                onToast(i18n.t('feedback.ocrEmpty'), 'info');
                 return;
             }
 
-            onFeedback(`OCR 完成（${result.data.usedLanguage}），已复制文本（${text.length} 字符）。`);
-            onToast(`OCR 完成（${result.data.usedLanguage}），文本已复制到剪贴板。`, 'success');
+            onFeedback(i18n.t('feedback.ocrSummaryReady'));
+            onToast(i18n.t('feedback.ocrSummaryReady'), 'success');
         } catch {
-            onFeedback('OCR 失败：后端识别服务异常。');
-            onToast('OCR 失败：后端识别服务异常。', 'error');
+            onFeedback(i18n.t('feedback.ocrBackendError'));
+            onToast(i18n.t('feedback.ocrBackendError'), 'error');
         } finally {
             setIsOcrRunning(false);
         }

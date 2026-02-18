@@ -1,4 +1,6 @@
 import { noaDesktopClient } from '../../../../ipc';
+import i18n from '../../../../i18n';
+import { usePreferencesStore } from '../../../../shared/state/preferences-store';
 import type { Rect } from '../../ui/types';
 
 type Params = {
@@ -18,31 +20,34 @@ export function useCaptureSaver({
     onFeedback,
     onToast,
 }: Params) {
+    const copyCaptureToClipboard = usePreferencesStore((state) => state.copyCaptureToClipboard);
+
     const saveCapture = async (dataUrl: string, region?: Rect) => {
         const result = await noaDesktopClient.saveCapture({
             dataUrl,
             sourceUrl,
             timestampMs: currentTimeMs,
             region,
+            copyToClipboard: copyCaptureToClipboard,
         });
 
         if (!result.ok) {
-            onFeedback(`截图保存失败：${result.error.message}`);
-            onToast(`截图保存失败：${result.error.message}`, 'error');
+            onFeedback(i18n.t('feedback.captureSaveFailed', { message: result.error.message }));
+            onToast(i18n.t('feedback.captureSaveFailed', { message: result.error.message }), 'error');
             return null;
         }
 
         addItem(result.data.asset);
-        onFeedback(`截图保存成功：${result.data.asset.id}`);
-        onToast('截图保存成功，图片已自动复制到系统剪贴板。', 'success');
+        onFeedback(`${i18n.t('controls.capture')}：${result.data.asset.id}`);
+        onToast(copyCaptureToClipboard ? i18n.t('feedback.captureSaved') : i18n.t('feedback.captureSavedNoClipboard'), 'success');
         return result.data.asset;
     };
 
     const captureFullFrame = async () => {
         const video = videoRef.current;
         if (!video || !video.videoWidth || !video.videoHeight) {
-            onFeedback('当前视频尚未就绪，无法截图。');
-            onToast('截图失败：视频尚未完成解码，稍后重试。', 'error');
+            onFeedback(i18n.t('feedback.videoNotReady'));
+            onToast(i18n.t('feedback.videoNotReadyToast'), 'error');
             return null;
         }
 
@@ -52,8 +57,8 @@ export function useCaptureSaver({
 
         const context = canvas.getContext('2d');
         if (!context) {
-            onFeedback('浏览器上下文不可用，无法截图。');
-            onToast('截图失败：Canvas 上下文不可用。', 'error');
+            onFeedback(i18n.t('feedback.canvasUnavailable'));
+            onToast(i18n.t('feedback.canvasUnavailableToast'), 'error');
             return null;
         }
 
@@ -74,8 +79,8 @@ export function useCaptureSaver({
 
         const frameContext = frameCanvas.getContext('2d');
         if (!frameContext) {
-            onFeedback('浏览器上下文不可用，无法截图。');
-            onToast('区域截图失败：Canvas 上下文不可用。', 'error');
+            onFeedback(i18n.t('feedback.canvasUnavailable'));
+            onToast(i18n.t('feedback.regionCanvasUnavailableToast'), 'error');
             return false;
         }
 
@@ -86,8 +91,8 @@ export function useCaptureSaver({
         cropCanvas.height = Math.max(1, Math.floor(regionRect.height));
         const cropContext = cropCanvas.getContext('2d');
         if (!cropContext) {
-            onFeedback('浏览器上下文不可用，无法截图。');
-            onToast('区域截图失败：裁剪上下文不可用。', 'error');
+            onFeedback(i18n.t('feedback.canvasUnavailable'));
+            onToast(i18n.t('feedback.regionCropUnavailableToast'), 'error');
             return false;
         }
 

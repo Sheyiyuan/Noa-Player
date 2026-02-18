@@ -1,5 +1,6 @@
 import { AssetContextMenu } from './AssetContextMenu';
 import { AssetListPanel } from './AssetListPanel';
+import { MarkdownEditorPanel } from './MarkdownEditorPanel';
 import { PlaybackControls } from './PlaybackControls';
 import { PlaybackStatusPanel } from './PlaybackStatusPanel';
 import { SourceBar } from './SourceBar';
@@ -29,22 +30,8 @@ export function PlayerWorkbench() {
 
     return (
         <section className="player-workbench">
-            <header className="workbench-header">
-                <h1>Noa Studio</h1>
-                <p>播放控制 + 全屏截图 + 区域截图 + 素材入库</p>
-            </header>
-
             <div className="workbench-content">
                 <section className="player-panel">
-                    <SourceBar
-                        urlInput={state.urlInput}
-                        onUrlInputChange={actions.setUrlInput}
-                        onOpenUrlSource={actions.openUrlSource}
-                        onOpenLocalSource={actions.openLocalSource}
-                        fileInputRef={refs.fileInputRef}
-                        onSelectLocalFile={actions.onSelectLocalFile}
-                    />
-
                     <div
                         className={`video-shell ${state.isRegionMode ? 'region-mode' : ''}`}
                         onPointerDown={actions.onPointerDown}
@@ -84,19 +71,24 @@ export function PlayerWorkbench() {
                         ) : null}
                     </div>
 
+                    <SourceBar
+                        urlInput={state.urlInput}
+                        onUrlInputChange={actions.setUrlInput}
+                        onOpenUrlSource={actions.openUrlSource}
+                        onOpenLocalSource={actions.openLocalSource}
+                    />
+
                     <PlaybackControls
                         isPlaying={state.isPlaying}
                         isMuted={state.isMuted}
                         rate={state.rate}
                         volume={state.volume}
-                        isOcrRunning={state.isOcrRunning}
                         onTogglePlay={actions.togglePlay}
                         onSeekBy={actions.seekBy}
                         onToggleMute={actions.toggleMute}
                         onSetPlaybackRate={actions.setPlaybackRate}
                         onSetPlaybackVolume={actions.setPlaybackVolume}
                         onCaptureFullFrame={actions.captureFullFrame}
-                        onCaptureFullFrameWithOcr={actions.captureFullFrameWithOcr}
                         onStartRegionCapture={actions.startRegionCapture}
                     />
 
@@ -107,13 +99,34 @@ export function PlayerWorkbench() {
                         sourceUrl={state.sourceUrl}
                         isBuffering={state.isBuffering}
                         isPlaying={state.isPlaying}
+                        playlist={state.videoPlaylist}
+                        currentVideoId={state.currentVideoId}
                         feedback={state.feedback}
+                        onSelectVideo={actions.switchVideo}
+                        onRenameVideo={actions.renameVideo}
+                        onDeleteVideo={actions.deleteVideo}
+                        onReorderVideo={actions.reorderVideo}
                         onSeekTo={actions.seekTo}
                         onProgressKeyboardSeek={actions.onProgressKeyboardSeek}
                     />
                 </section>
 
-                <AssetListPanel items={state.items} onAssetContextMenu={actions.onAssetContextMenu} />
+                <AssetListPanel
+                    items={state.items}
+                    onAssetContextMenu={actions.onAssetContextMenu}
+                    ocrSummaries={state.ocrSummaries}
+                    ocrLoadingByAssetId={state.ocrLoadingByAssetId}
+                    onRunAssetOcr={actions.runAssetOcr}
+                    onInsertAsset={actions.insertAssetImage}
+                />
+
+                <MarkdownEditorPanel
+                    value={state.markdownText}
+                    onChange={actions.setMarkdownText}
+                    onInsertTimestamp={actions.insertTimestampToken}
+                    onSelectionChange={actions.setMarkdownSelectionRange}
+                    onFocusChange={actions.setMarkdownFocus}
+                />
             </div>
 
             <AssetContextMenu

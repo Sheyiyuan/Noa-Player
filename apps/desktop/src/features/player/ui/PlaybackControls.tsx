@@ -1,7 +1,6 @@
 import {
     Camera,
     Crop,
-    FileText,
     Pause,
     Play,
     SkipBack,
@@ -9,20 +8,19 @@ import {
     Volume2,
     VolumeX,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 type PlaybackControlsProps = {
     isPlaying: boolean;
     isMuted: boolean;
     rate: number;
     volume: number;
-    isOcrRunning: boolean;
     onTogglePlay: () => void | Promise<void>;
     onSeekBy: (deltaMs: number) => void;
     onToggleMute: () => void;
     onSetPlaybackRate: (value: number) => void;
     onSetPlaybackVolume: (value: number) => void;
     onCaptureFullFrame: () => void | Promise<unknown>;
-    onCaptureFullFrameWithOcr: () => void | Promise<void>;
     onStartRegionCapture: () => void;
 };
 
@@ -31,24 +29,24 @@ export function PlaybackControls({
     isMuted,
     rate,
     volume,
-    isOcrRunning,
     onTogglePlay,
     onSeekBy,
     onToggleMute,
     onSetPlaybackRate,
     onSetPlaybackVolume,
     onCaptureFullFrame,
-    onCaptureFullFrameWithOcr,
     onStartRegionCapture,
 }: PlaybackControlsProps) {
+    const { t } = useTranslation();
+
     return (
         <div className="controls-row">
             <button
                 type="button"
                 className="icon-button"
-                aria-label={isPlaying ? '暂停' : '播放'}
-                data-tooltip={isPlaying ? '暂停' : '播放'}
-                title={isPlaying ? '暂停' : '播放'}
+                aria-label={isPlaying ? t('controls.pause') : t('controls.play')}
+                data-tooltip={isPlaying ? t('controls.pause') : t('controls.play')}
+                title={isPlaying ? t('controls.pause') : t('controls.play')}
                 onClick={onTogglePlay}
             >
                 {isPlaying ? <Pause size={16} /> : <Play size={16} />}
@@ -56,9 +54,9 @@ export function PlaybackControls({
             <button
                 type="button"
                 className="icon-button"
-                aria-label="后退 5 秒"
-                data-tooltip="后退 5 秒"
-                title="后退 5 秒"
+                aria-label={t('controls.back5')}
+                data-tooltip={t('controls.back5')}
+                title={t('controls.back5')}
                 onClick={() => onSeekBy(-5000)}
             >
                 <SkipBack size={16} />
@@ -66,9 +64,9 @@ export function PlaybackControls({
             <button
                 type="button"
                 className="icon-button"
-                aria-label="前进 5 秒"
-                data-tooltip="前进 5 秒"
-                title="前进 5 秒"
+                aria-label={t('controls.forward5')}
+                data-tooltip={t('controls.forward5')}
+                title={t('controls.forward5')}
                 onClick={() => onSeekBy(5000)}
             >
                 <SkipForward size={16} />
@@ -76,15 +74,15 @@ export function PlaybackControls({
             <button
                 type="button"
                 className="icon-button"
-                aria-label={isMuted ? '取消静音' : '静音'}
-                data-tooltip={isMuted ? '取消静音' : '静音'}
-                title={isMuted ? '取消静音' : '静音'}
+                aria-label={isMuted ? t('controls.unmute') : t('controls.mute')}
+                data-tooltip={isMuted ? t('controls.unmute') : t('controls.mute')}
+                title={isMuted ? t('controls.unmute') : t('controls.mute')}
                 onClick={onToggleMute}
             >
                 {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
             <label>
-                倍速
+                {t('controls.speed')}
                 <select value={rate} onChange={(event) => onSetPlaybackRate(Number(event.target.value))}>
                     <option value={0.5}>0.5x</option>
                     <option value={1}>1x</option>
@@ -94,7 +92,7 @@ export function PlaybackControls({
                 </select>
             </label>
             <label>
-                音量
+                {t('controls.volume')}
                 <input
                     type="range"
                     min={0}
@@ -107,9 +105,9 @@ export function PlaybackControls({
             <button
                 type="button"
                 className="icon-button"
-                aria-label="全屏截图"
-                data-tooltip="全屏截图"
-                title="全屏截图"
+                aria-label={t('controls.capture')}
+                data-tooltip={t('controls.capture')}
+                title={t('controls.capture')}
                 onClick={onCaptureFullFrame}
             >
                 <Camera size={16} />
@@ -117,20 +115,9 @@ export function PlaybackControls({
             <button
                 type="button"
                 className="icon-button"
-                aria-label="全屏截图并 OCR"
-                data-tooltip={isOcrRunning ? 'OCR 处理中...' : '全屏截图并 OCR'}
-                title={isOcrRunning ? 'OCR 处理中...' : '全屏截图并 OCR'}
-                onClick={onCaptureFullFrameWithOcr}
-                disabled={isOcrRunning}
-            >
-                <FileText size={16} />
-            </button>
-            <button
-                type="button"
-                className="icon-button"
-                aria-label="区域截图"
-                data-tooltip="区域截图"
-                title="区域截图"
+                aria-label={t('controls.captureRegion')}
+                data-tooltip={t('controls.captureRegion')}
+                title={t('controls.captureRegion')}
                 onClick={onStartRegionCapture}
             >
                 <Crop size={16} />

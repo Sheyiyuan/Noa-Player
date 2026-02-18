@@ -1,4 +1,5 @@
 import { noaDesktopClient } from '../../../../ipc';
+import i18n from '../../../../i18n';
 import type { AssetMenuState } from '../../ui/types';
 
 type Params = {
@@ -23,11 +24,11 @@ export function useAssetMenuActions({
 
         const result = await noaDesktopClient.openAssetInFolder({ assetId: assetMenu.assetId });
         if (!result.ok || !result.data.success) {
-            onToast('打开所在文件夹失败：素材可能已不存在。', 'error');
+            onToast(i18n.t('feedback.openFolderFailed'), 'error');
             return;
         }
 
-        onToast('已打开素材所在文件夹。', 'info');
+        onToast(i18n.t('feedback.openFolderDone'), 'info');
     };
 
     const deleteAsset = async () => {
@@ -38,14 +39,14 @@ export function useAssetMenuActions({
         const { assetId } = assetMenu;
         const result = await noaDesktopClient.deleteAsset({ assetId });
         if (!result.ok || !result.data.success) {
-            onToast('删除素材失败：素材可能已不存在。', 'error');
+            onToast(i18n.t('feedback.deleteAssetFailed'), 'error');
             return;
         }
 
         removeItem(assetId);
         setSelectedAssetId(null);
         setAssetMenu(null);
-        onToast('素材已删除。', 'success');
+        onToast(i18n.t('feedback.assetDeleted'), 'success');
     };
 
     return {
