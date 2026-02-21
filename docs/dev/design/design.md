@@ -91,6 +91,7 @@
 ### 4.1 目录结构
 ```text
 project-folder/
+  project.json
   note.md
   assets/
     20260218-012345.png
@@ -101,7 +102,7 @@ project-folder/
 ### 4.2 规则
 - 一个工程 = 一个普通文件夹。
 - 笔记为标准 Markdown 文件；素材统一在 `assets/`。
-- 不额外引入必须存在的配置文件。
+- project.json 记录工程元信息（如 title、更新时间、创建时间、资源索引、视频信息等）。
 - 可直接复制、备份、分享。
 
 ---

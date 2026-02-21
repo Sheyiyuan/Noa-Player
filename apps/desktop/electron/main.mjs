@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { registerIpcHandlers } from './ipc/register-handlers.mjs';
 import { getMediaHeaderOverride } from './ipc/media-header-overrides.mjs';
+import { initializeTempNoteProject } from './ipc/note-project.mjs';
+import { IPC_CHANNELS } from './ipc/channels.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,11 +81,22 @@ function createMainWindow() {
         const rendererIndexPath = path.join(__dirname, '..', 'dist', 'renderer', 'index.html');
         mainWindow.loadFile(rendererIndexPath);
     }
+
+    const FORCE_CLOSE_FLAG = '__noaAllowClose';
+    mainWindow.on('close', (event) => {
+        if (mainWindow[FORCE_CLOSE_FLAG]) {
+            return;
+        }
+
+        event.preventDefault();
+        mainWindow.webContents.send(IPC_CHANNELS.WINDOW_CLOSE_INTENT);
+    });
 }
 
 app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
     registerIpcHandlers();
+    void initializeTempNoteProject();
     createMainWindow();
 
     app.on('activate', () => {

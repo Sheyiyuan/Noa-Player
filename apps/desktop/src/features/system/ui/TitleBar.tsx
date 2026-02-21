@@ -5,6 +5,7 @@ import { changeLanguage, getNormalizedLanguage } from '../../../i18n';
 import { useEffect, useRef, useState } from 'react';
 import useDarkMode from 'use-dark-mode';
 import { usePreferencesStore } from '../../../shared/state/preferences-store';
+import { useProjectStore } from '../../../shared/state/project-store';
 
 export function TitleBar() {
     const { t } = useTranslation();
@@ -15,6 +16,8 @@ export function TitleBar() {
     const setLanguage = usePreferencesStore((state) => state.setLanguage);
     const setThemeMode = usePreferencesStore((state) => state.setThemeMode);
     const setCopyCaptureToClipboard = usePreferencesStore((state) => state.setCopyCaptureToClipboard);
+    const projectName = useProjectStore((state) => state.projectName);
+    const isDirty = useProjectStore((state) => state.isDirty);
     const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
     const [isSystemDark, setIsSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
     const darkMode = useDarkMode(true, {
@@ -90,8 +93,8 @@ export function TitleBar() {
         await noaDesktopClient.toggleMaximizeWindow();
     };
 
-    const onClose = async () => {
-        await noaDesktopClient.closeWindow();
+    const onClose = () => {
+        window.dispatchEvent(new CustomEvent('noa-window-close-intent'));
     };
 
     const onLanguageChange = async (nextLanguage: 'zh-CN' | 'zh-TW' | 'en') => {
@@ -103,9 +106,14 @@ export function TitleBar() {
         setThemeMode(nextTheme);
     };
 
+    const titleProjectName = projectName?.trim() ? projectName : '未保存项目';
+
     return (
         <header className="titlebar" role="banner">
-            <div className="titlebar__brand">Noa Studio</div>
+            <div className="titlebar__brand">
+                <span className="titlebar__brand-name">Noa Studio</span>
+                <span className="titlebar__brand-project">{` ${isDirty ? '*' : ''}[${titleProjectName}]`}</span>
+            </div>
             <div className="titlebar__window-actions no-drag">
                 <div className="titlebar__preferences" ref={menuRef}>
                     <button

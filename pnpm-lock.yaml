@@ -40,6 +40,9 @@ importers:
       tesseract.js:
         specifier: ^7.0.0
         version: 7.0.0
+      transliteration:
+        specifier: ^2.6.1
+        version: 2.6.1
       use-dark-mode:
         specifier: ^2.3.1
         version: 2.3.1(react@18.3.1)
@@ -1426,6 +1429,11 @@ packages:
 
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
+
+  transliteration@2.6.1:
+    resolution: {integrity: sha512-hJ9BhrQAOnNTbpOr1MxsNjZISkn7ppvF5TKUeFmTE1mG4ZPD/XVxF0L0LUoIUCWmQyxH0gJpVtfYLAWf298U9w==}
+    engines: {node: '>=20.0.0'}
+    hasBin: true
 
   tree-kill@1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
@@ -2923,6 +2931,8 @@ snapshots:
       is-number: 7.0.0
 
   tr46@0.0.3: {}
+
+  transliteration@2.6.1: {}
 
   tree-kill@1.2.2: {}
 

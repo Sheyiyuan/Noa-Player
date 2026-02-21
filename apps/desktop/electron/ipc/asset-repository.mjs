@@ -1,41 +1,50 @@
-import { app, clipboard, nativeImage } from 'electron';
+import { clipboard, nativeImage } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { getCurrentProjectDir, updateProjectMeta } from './note-project.mjs';
 
-const ASSET_ROOT_DIR = 'assets';
-const ASSET_IMAGE_DIR = 'images';
-const ASSET_INDEX_FILE = 'index.json';
+const ASSET_IMAGE_DIR = 'assets';
+const PROJECT_META_FILE = 'project.json';
 
-function getAssetPaths() {
-    const userDataDir = app.getPath('userData');
-    const rootDir = path.join(userDataDir, ASSET_ROOT_DIR);
+async function getAssetPaths() {
+    const rootDir = await getCurrentProjectDir();
     const imageDir = path.join(rootDir, ASSET_IMAGE_DIR);
-    const indexPath = path.join(rootDir, ASSET_INDEX_FILE);
-    return { rootDir, imageDir, indexPath };
+    const projectMetaPath = path.join(rootDir, PROJECT_META_FILE);
+    return { rootDir, imageDir, projectMetaPath };
 }
 
 async function ensureAssetDirs() {
-    const { rootDir, imageDir } = getAssetPaths();
+    const { rootDir, imageDir } = await getAssetPaths();
     await fs.mkdir(rootDir, { recursive: true });
     await fs.mkdir(imageDir, { recursive: true });
 }
 
 async function readIndex() {
-    const { indexPath } = getAssetPaths();
+    const { projectMetaPath } = await getAssetPaths();
     try {
-        const text = await fs.readFile(indexPath, 'utf8');
+        const text = await fs.readFile(projectMetaPath, 'utf8');
         const parsed = JSON.parse(text);
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed?.resources) ? parsed.resources : [];
     } catch {
         return [];
     }
 }
 
 async function writeIndex(items) {
-    const { indexPath } = getAssetPaths();
-    await fs.writeFile(indexPath, JSON.stringify(items, null, 2), 'utf8');
+    await updateProjectMeta((meta) => ({
+        ...meta,
+        resources: items.map((entry) => ({
+            id: entry.id,
+            imagePath: entry.imagePath,
+            sourceUrl: entry.sourceUrl,
+            timestampMs: entry.timestampMs,
+            width: entry.width,
+            height: entry.height,
+            createdAt: entry.createdAt,
+        })),
+    }));
 }
 
 async function removeIfExists(filePath) {
@@ -158,7 +167,7 @@ export async function saveCaptureAsset(payload) {
     const nowIso = new Date().toISOString();
     const fileName = `${nowIso.replace(/[:.]/g, '-')}-${id}.${parsedImage.extension}`;
 
-    const { imageDir } = getAssetPaths();
+    const { imageDir } = await getAssetPaths();
     const imagePath = path.join(imageDir, fileName);
 
     await fs.writeFile(imagePath, parsedImage.buffer);

@@ -136,6 +136,79 @@ export function PlayerWorkbench() {
             />
 
             <ToastStack toasts={state.toasts} onDismissToast={actions.dismissToast} />
+
+            {state.isSaveDialogOpen ? (
+                <div className="app-modal-layer" role="dialog" aria-modal="true" aria-label="另存为项目">
+                    <div className="app-modal-card">
+                        <h3>另存为项目</h3>
+                        <label className="app-modal-field">
+                            <span>项目名称</span>
+                            <input
+                                type="text"
+                                value={state.saveProjectNameInput}
+                                onChange={(event) => actions.onSaveProjectNameChange(event.currentTarget.value)}
+                            />
+                        </label>
+                        <label className="app-modal-field">
+                            <span>目录名称</span>
+                            <input
+                                type="text"
+                                value={state.saveDirectoryNameInput}
+                                onChange={(event) => actions.setSaveDirectoryNameInput(event.currentTarget.value)}
+                            />
+                        </label>
+
+                        <div className="app-modal-path-toolbar">
+                            <button type="button" onClick={actions.navigateSaveParentPath} disabled={!state.saveParentPath}>上级目录</button>
+                            <span className="app-modal-path-preview">{state.saveBrowserPath}</span>
+                        </div>
+
+                        <div className="app-modal-path-list">
+                            {state.saveDirectories.map((entry) => (
+                                <button
+                                    key={entry.path}
+                                    type="button"
+                                    className="app-modal-path-item"
+                                    onClick={() => actions.navigateSavePath(entry.path)}
+                                >
+                                    {entry.name}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="app-modal-new-folder">
+                            <input
+                                type="text"
+                                placeholder="新建文件夹名称"
+                                value={state.newFolderName}
+                                onChange={(event) => actions.setNewFolderName(event.currentTarget.value)}
+                            />
+                            <button type="button" onClick={actions.createFolderInSavePath}>新建文件夹</button>
+                        </div>
+
+                        <p className="app-modal-path-preview">{`${state.saveBrowserPath}/${state.saveDirectoryNameInput || 'project'}`}</p>
+
+                        <div className="app-modal-actions">
+                            <button type="button" onClick={actions.closeSaveDialog}>取消</button>
+                            <button type="button" onClick={actions.submitProjectSaveAs} disabled={state.isSaveSubmitting}>保存</button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {state.isCloseConfirmOpen ? (
+                <div className="app-modal-layer" role="dialog" aria-modal="true" aria-label="关闭确认">
+                    <div className="app-modal-card app-modal-card--compact">
+                        <h3>检测到未保存改动</h3>
+                        <p>是否保存当前项目后退出？</p>
+                        <div className="app-modal-actions">
+                            <button type="button" onClick={actions.closeCloseConfirm}>取消</button>
+                            <button type="button" onClick={actions.closeWithoutSaving}>不保存退出</button>
+                            <button type="button" onClick={actions.saveAndExit}>保存并退出</button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </section>
     );
 }

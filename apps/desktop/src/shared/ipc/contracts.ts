@@ -28,6 +28,10 @@ export type WindowCommandResult = {
     isMaximized?: boolean;
 };
 
+export type CloseWindowPayload = {
+    confirmed?: boolean;
+};
+
 export type CaptureRegion = {
     x: number;
     y: number;
@@ -124,18 +128,101 @@ export type PickLocalVideosResult = {
     items: LocalVideoFile[];
 };
 
+export type NoteTempProjectState = {
+    projectPath: string;
+    notePath: string;
+    content: string;
+    dirty: boolean;
+    projectName: string;
+    isDefaultProject: boolean;
+};
+
+export type SaveTempNoteProjectPayload = {
+    content: string;
+};
+
+export type SaveTempNoteProjectResult = {
+    projectPath: string;
+    notePath: string;
+    bytes: number;
+};
+
+export type SetNoteDirtyPayload = {
+    dirty: boolean;
+};
+
+export type SetNoteDirtyResult = {
+    dirty: boolean;
+};
+
+export type SetProjectVideosPayload = {
+    videos: Array<{
+        id: string;
+        label: string;
+        sourceUrl: string;
+    }>;
+    currentVideoId: string | null;
+};
+
+export type SetProjectVideosResult = {
+    updated: boolean;
+    count: number;
+};
+
+export type SaveProjectAsPayload = {
+    basePath: string;
+    directoryName: string;
+    projectName: string;
+};
+
+export type SaveProjectAsResult = {
+    saved: boolean;
+    canceled: boolean;
+    projectPath: string;
+    projectName: string;
+};
+
+export type ListSaveDirectoriesPayload = {
+    path?: string;
+};
+
+export type ListSaveDirectoriesResult = {
+    currentPath: string;
+    parentPath: string | null;
+    directories: Array<{
+        name: string;
+        path: string;
+    }>;
+};
+
+export type CreateSaveDirectoryPayload = {
+    basePath: string;
+    directoryName: string;
+};
+
+export type CreateSaveDirectoryResult = {
+    createdPath: string;
+};
+
 export interface NoaDesktopApi {
     ping: () => Promise<IpcResponse<PingResult>>;
     getVersions: () => Promise<IpcResponse<AppVersions>>;
     minimizeWindow: () => Promise<IpcResponse<WindowCommandResult>>;
     toggleMaximizeWindow: () => Promise<IpcResponse<WindowCommandResult>>;
-    closeWindow: () => Promise<IpcResponse<WindowCommandResult>>;
+    closeWindow: (payload?: CloseWindowPayload) => Promise<IpcResponse<WindowCommandResult>>;
     saveCapture: (payload: SaveCapturePayload) => Promise<IpcResponse<SaveCaptureResult>>;
     listAssets: () => Promise<IpcResponse<ListAssetsResult>>;
     openAssetInFolder: (payload: AssetActionPayload) => Promise<IpcResponse<AssetOpenFolderResult>>;
     deleteAsset: (payload: AssetActionPayload) => Promise<IpcResponse<AssetDeleteResult>>;
     recognizeAssetOcr: (payload: RecognizeAssetOcrPayload) => Promise<IpcResponse<RecognizeAssetOcrResult>>;
     pickLocalVideos: () => Promise<IpcResponse<PickLocalVideosResult>>;
+    getTempNoteProject: () => Promise<IpcResponse<NoteTempProjectState>>;
+    saveTempNoteProject: (payload: SaveTempNoteProjectPayload) => Promise<IpcResponse<SaveTempNoteProjectResult>>;
+    setNoteDirty: (payload: SetNoteDirtyPayload) => Promise<IpcResponse<SetNoteDirtyResult>>;
+    setProjectVideos: (payload: SetProjectVideosPayload) => Promise<IpcResponse<SetProjectVideosResult>>;
+    saveProjectAs: (payload: SaveProjectAsPayload) => Promise<IpcResponse<SaveProjectAsResult>>;
+    listSaveDirectories: (payload: ListSaveDirectoriesPayload) => Promise<IpcResponse<ListSaveDirectoriesResult>>;
+    createSaveDirectory: (payload: CreateSaveDirectoryPayload) => Promise<IpcResponse<CreateSaveDirectoryResult>>;
     exportSession: (payload: ExportSessionPayload) => Promise<IpcResponse<ExportSessionResult>>;
     exportMarkdown: (payload: ExportMarkdownPayload) => Promise<IpcResponse<ExportMarkdownResult>>;
     registerMediaHeaders: (payload: RegisterMediaHeadersPayload) => Promise<IpcResponse<RegisterMediaHeadersResult>>;

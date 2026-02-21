@@ -64,6 +64,10 @@
     --color-border-shell: #232a36;
     --color-shadow-toast: 0 8px 20px rgb(0 0 0 / 35%);
     --color-shadow-menu: 0 10px 28px rgb(0 0 0 / 45%);
+    --scrollbar-thumb: #3a475a;
+    --scrollbar-thumb-hover: #4a5d78;
+    --scrollbar-track: #121821;
+    --scrollbar-corner: #121821;
     font-family: var(--app-font-family);
     color: var(--color-text-primary);
     background: var(--color-bg-app);
@@ -86,6 +90,10 @@ html[data-theme='light'] {
     --color-border-shell: #d5dde8;
     --color-shadow-toast: 0 8px 20px rgb(17 24 39 / 12%);
     --color-shadow-menu: 0 10px 28px rgb(17 24 39 / 14%);
+    --scrollbar-thumb: #bdc8d6;
+    --scrollbar-thumb-hover: #9fb0c4;
+    --scrollbar-track: #e8edf5;
+    --scrollbar-corner: #e8edf5;
 }
 
 html[lang='zh-TW'] {
@@ -94,6 +102,34 @@ html[lang='zh-TW'] {
 
 * {
     box-sizing: border-box;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+    border: 2px solid var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+    background: var(--scrollbar-corner);
 }
 
 html,
@@ -133,8 +169,16 @@ body,
 
 .titlebar__brand {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     letter-spacing: 0.3px;
+}
+
+.titlebar__brand-name {
+    font-weight: 700;
+}
+
+.titlebar__brand-project {
+    font-weight: 400;
 }
 
 .titlebar__window-actions {
@@ -765,6 +809,106 @@ button:hover {
 
 .toast--leave {
     animation: toast-out 220ms ease-in both;
+}
+
+.app-modal-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    background: rgb(0 0 0 / 42%);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.app-modal-card {
+    width: min(700px, 100%);
+    max-height: min(82vh, 760px);
+    overflow: auto;
+    background: var(--color-bg-shell);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.app-modal-card--compact {
+    width: min(420px, 100%);
+}
+
+.app-modal-card h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.app-modal-card p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+
+.app-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.app-modal-field input,
+.app-modal-new-folder input {
+    border-radius: 8px;
+    border: 1px solid var(--color-border-soft);
+    background: var(--color-bg-panel);
+    color: var(--color-text-primary);
+    padding: 8px 10px;
+}
+
+.app-modal-path-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-modal-path-preview {
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-modal-path-list {
+    border: 1px solid var(--color-border-soft);
+    border-radius: 8px;
+    background: var(--color-bg-panel);
+    min-height: 180px;
+    max-height: 280px;
+    overflow: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.app-modal-path-item {
+    text-align: left;
+    width: 100%;
+}
+
+.app-modal-new-folder {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+}
+
+.app-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 @keyframes toast-in {

@@ -18,10 +18,23 @@ import {
 } from './asset-repository.mjs';
 import { recognizeAssetText } from './ocr-service.mjs';
 import { registerMediaHeaderOverrides } from './media-header-overrides.mjs';
+import {
+    cleanupDefaultProjectOnClose,
+    createSaveDirectory as createProjectSaveDirectory,
+    getTempNoteProjectState,
+    listSaveDirectories as listProjectSaveDirectories,
+    saveProjectAs,
+    saveTempNoteProject,
+    setNoteDirty,
+    setProjectVideos,
+} from './note-project.mjs';
 
 function registerChannel(channel, config) {
+    ipcMain.removeHandler(channel);
     ipcMain.handle(channel, wrapIpcHandler(config));
 }
+
+const FORCE_CLOSE_FLAG = '__noaAllowClose';
 
 function getSenderWindow(event) {
     return event?.sender ? event.sender.getOwnerBrowserWindow() : null;
@@ -68,8 +81,18 @@ export function registerIpcHandlers() {
     });
 
     registerChannel(IPC_CHANNELS.WINDOW_CLOSE, {
-        handle: async (_payload, event) => {
-            getSenderWindow(event)?.close();
+        handle: async (payload, event) => {
+            const window = getSenderWindow(event);
+            if (!window) {
+                return { success: false };
+            }
+
+            if (payload?.confirmed) {
+                window[FORCE_CLOSE_FLAG] = true;
+                await cleanupDefaultProjectOnClose();
+            }
+
+            window.close();
             return { success: true };
         },
     });
@@ -159,6 +182,34 @@ export function registerIpcHandlers() {
                 })),
             };
         },
+    });
+
+    registerChannel(IPC_CHANNELS.NOTES_GET_TEMP_PROJECT, {
+        handle: async () => getTempNoteProjectState(),
+    });
+
+    registerChannel(IPC_CHANNELS.NOTES_SAVE_TEMP_PROJECT, {
+        handle: async (payload) => saveTempNoteProject(payload),
+    });
+
+    registerChannel(IPC_CHANNELS.NOTES_SET_DIRTY, {
+        handle: async (payload) => setNoteDirty(payload),
+    });
+
+    registerChannel(IPC_CHANNELS.NOTES_SET_PROJECT_VIDEOS, {
+        handle: async (payload) => setProjectVideos(payload),
+    });
+
+    registerChannel(IPC_CHANNELS.NOTES_SAVE_PROJECT_AS, {
+        handle: async (payload) => saveProjectAs(payload),
+    });
+
+    registerChannel(IPC_CHANNELS.NOTES_LIST_SAVE_DIRECTORIES, {
+        handle: async (payload) => listProjectSaveDirectories(payload),
+    });
+
+    registerChannel(IPC_CHANNELS.NOTES_CREATE_SAVE_DIRECTORY, {
+        handle: async (payload) => createProjectSaveDirectory(payload),
     });
 
     const exportSessionConfig = {

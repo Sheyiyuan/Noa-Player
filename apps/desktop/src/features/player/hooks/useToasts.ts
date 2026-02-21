@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ToastItem, ToastLevel } from '../ui/types';
 
 export function useToasts() {
@@ -8,7 +8,7 @@ export function useToasts() {
 
     const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-    const showToast = (message: string, level: ToastLevel = 'info') => {
+    const showToast = useCallback((message: string, level: ToastLevel = 'info') => {
         const id = Date.now() + Math.floor(Math.random() * 1000);
         setToasts((current) => {
             const last = current[current.length - 1];
@@ -31,15 +31,15 @@ export function useToasts() {
         window.setTimeout(() => {
             setToasts((current) => current.filter((item) => item.id !== id));
         }, TOAST_VISIBLE_MS + TOAST_LEAVE_MS);
-    };
+    }, []);
 
-    const dismissToast = (id: number) => {
+    const dismissToast = useCallback((id: number) => {
         setToasts((current) => current.map((item) => (item.id === id ? { ...item, phase: 'leave' } : item)));
 
         window.setTimeout(() => {
             setToasts((current) => current.filter((item) => item.id !== id));
         }, TOAST_LEAVE_MS);
-    };
+    }, []);
 
     return {
         toasts,

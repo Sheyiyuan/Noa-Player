@@ -11,6 +11,15 @@ import { parseSourceInput } from './source-loader/parse-input';
 import { useRegionSelection } from './useRegionSelection';
 import { useToasts } from './useToasts';
 import i18n from '../../../i18n';
+import { useProjectStore } from '../../../shared/state/project-store';
+import { transliterate } from 'transliteration';
+
+type SaveDirectoryEntry = {
+    name: string;
+    path: string;
+};
+
+type SaveDialogMode = 'manual' | 'close';
 
 export function usePlayerWorkbenchController() {
     const [videoPlaylist, setVideoPlaylist] = useState<Array<{ id: string; label: string; sourceUrl: string; fallbackUrl?: string }>>([]);
@@ -24,6 +33,16 @@ export function usePlayerWorkbenchController() {
     const [ocrSummaries, setOcrSummaries] = useState<Record<string, string>>({});
     const [ocrLoadingByAssetId, setOcrLoadingByAssetId] = useState<Record<string, boolean>>({});
     const [assetMenu, setAssetMenu] = useState<AssetMenuState | null>(null);
+    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+    const [saveDialogMode, setSaveDialogMode] = useState<SaveDialogMode>('manual');
+    const [saveProjectNameInput, setSaveProjectNameInput] = useState('未保存项目');
+    const [saveDirectoryNameInput, setSaveDirectoryNameInput] = useState('wei_bao_cun_xiang_mu');
+    const [saveBrowserPath, setSaveBrowserPath] = useState('');
+    const [saveParentPath, setSaveParentPath] = useState<string | null>(null);
+    const [saveDirectories, setSaveDirectories] = useState<SaveDirectoryEntry[]>([]);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [isSaveSubmitting, setIsSaveSubmitting] = useState(false);
+    const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
 
     const { toasts, showToast, dismissToast } = useToasts();
 
@@ -50,6 +69,76 @@ export function usePlayerWorkbenchController() {
     const localObjectUrlByVideoIdRef = useRef<Map<string, string>>(new Map());
     const markdownSelectionRef = useRef<{ start: number; end: number } | null>(null);
     const markdownFocusRef = useRef(false);
+    const hasLoadedTempNoteRef = useRef(false);
+    const skipNextAutosaveRef = useRef(false);
+    const skipNextVideoSyncDirtyRef = useRef(true);
+    const dirtyRef = useRef(false);
+    const autosaveTimerRef = useRef<number | null>(null);
+    const markdownTextRef = useRef(markdownText);
+    const videoPlaylistRef = useRef(videoPlaylist);
+    const currentVideoIdRef = useRef(currentVideoId);
+    const isDefaultProjectRef = useRef(true);
+    const projectNameRef = useRef('未保存项目');
+
+    const setProjectMeta = (payload: { projectName: string; isDefaultProject: boolean }) => {
+        useProjectStore.setState({
+            projectName: payload.projectName,
+            isDefaultProject: payload.isDefaultProject,
+        });
+    };
+
+    const setProjectDirty = (isDirty: boolean) => {
+        useProjectStore.setState({ isDirty });
+    };
+
+    useEffect(() => {
+        markdownTextRef.current = markdownText;
+    }, [markdownText]);
+
+    useEffect(() => {
+        videoPlaylistRef.current = videoPlaylist;
+    }, [videoPlaylist]);
+
+    useEffect(() => {
+        currentVideoIdRef.current = currentVideoId;
+    }, [currentVideoId]);
+
+    const toSnakeDirectoryName = (projectName: string) => {
+        const romanized = transliterate(projectName || 'project')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+        return romanized || 'project';
+    };
+
+    const loadSaveDirectories = async (targetPath?: string) => {
+        const result = await noaDesktopClient.listSaveDirectories({ path: targetPath });
+        if (!result.ok) {
+            showToast(result.error.message, 'error');
+            return false;
+        }
+
+        setSaveBrowserPath(result.data.currentPath);
+        setSaveParentPath(result.data.parentPath);
+        setSaveDirectories(result.data.directories);
+        return true;
+    };
+
+    const markProjectDirty = async () => {
+        if (dirtyRef.current) {
+            return;
+        }
+
+        dirtyRef.current = true;
+        setProjectDirty(true);
+        await noaDesktopClient.setNoteDirty({ dirty: true });
+    };
+
+    const clearProjectDirty = async () => {
+        dirtyRef.current = false;
+        setProjectDirty(false);
+        await noaDesktopClient.setNoteDirty({ dirty: false });
+    };
 
     const { applyVideoSource, releaseVideoSource, onVideoError } = usePlayerSourceLoader({
         videoRef,
@@ -99,14 +188,274 @@ export function usePlayerWorkbenchController() {
             const result = await noaDesktopClient.listAssets();
             if (result.ok) {
                 setItems(result.data.items);
+            } else {
+                showToast(i18n.t('feedback.assetListLoadFailed', { message: result.error.message }), 'error');
+            }
+
+            const noteResult = await noaDesktopClient.getTempNoteProject();
+            if (!noteResult.ok) {
+                showToast(noteResult.error.message, 'error');
+                hasLoadedTempNoteRef.current = true;
                 return;
             }
 
-            showToast(i18n.t('feedback.assetListLoadFailed', { message: result.error.message }), 'error');
+            skipNextAutosaveRef.current = true;
+            setMarkdownText(noteResult.data.content);
+            dirtyRef.current = noteResult.data.dirty;
+            setProjectMeta({
+                projectName: noteResult.data.projectName,
+                isDefaultProject: noteResult.data.isDefaultProject,
+            });
+            setProjectDirty(noteResult.data.dirty);
+            isDefaultProjectRef.current = noteResult.data.isDefaultProject;
+            projectNameRef.current = noteResult.data.projectName;
+            setSaveProjectNameInput(noteResult.data.projectName);
+            setSaveDirectoryNameInput(toSnakeDirectoryName(noteResult.data.projectName));
+            hasLoadedTempNoteRef.current = true;
         };
 
         void init();
-    }, [setItems, showToast]);
+    }, [setItems]);
+
+    useEffect(() => {
+        if (!hasLoadedTempNoteRef.current) {
+            return;
+        }
+
+        if (skipNextAutosaveRef.current) {
+            skipNextAutosaveRef.current = false;
+            return;
+        }
+
+        const saveToTempProject = async () => {
+            const saveResult = await noaDesktopClient.saveTempNoteProject({ content: markdownText });
+            if (!saveResult.ok) {
+                showToast(saveResult.error.message, 'error');
+                return;
+            }
+
+            await markProjectDirty();
+        };
+
+        if (autosaveTimerRef.current !== null) {
+            window.clearTimeout(autosaveTimerRef.current);
+        }
+
+        autosaveTimerRef.current = window.setTimeout(() => {
+            void saveToTempProject();
+        }, 600);
+
+        return () => {
+            if (autosaveTimerRef.current !== null) {
+                window.clearTimeout(autosaveTimerRef.current);
+                autosaveTimerRef.current = null;
+            }
+        };
+    }, [markdownText]);
+
+    const syncSnapshotToProject = async (markDirtyAfterSave: boolean) => {
+        const saveResult = await noaDesktopClient.saveTempNoteProject({
+            content: markdownTextRef.current,
+        });
+        if (!saveResult.ok) {
+            showToast(i18n.t('feedback.manualSaveFailed', { message: saveResult.error.message }), 'error');
+            return false;
+        }
+
+        const syncResult = await noaDesktopClient.setProjectVideos({
+            videos: videoPlaylistRef.current.map((item) => ({
+                id: item.id,
+                label: item.label,
+                sourceUrl: item.sourceUrl,
+            })),
+            currentVideoId: currentVideoIdRef.current,
+        });
+        if (!syncResult.ok) {
+            showToast(i18n.t('feedback.manualSaveFailed', { message: syncResult.error.message }), 'error');
+            return false;
+        }
+
+        if (markDirtyAfterSave) {
+            await markProjectDirty();
+        } else {
+            await clearProjectDirty();
+        }
+
+        return true;
+    };
+
+    const openProjectSaveDialog = async (mode: SaveDialogMode) => {
+        setSaveDialogMode(mode);
+        const initialProjectName = projectNameRef.current || '未保存项目';
+        setSaveProjectNameInput(initialProjectName);
+        setSaveDirectoryNameInput(toSnakeDirectoryName(initialProjectName));
+        setNewFolderName('');
+        const loaded = await loadSaveDirectories();
+        if (!loaded) {
+            return;
+        }
+
+        setIsSaveDialogOpen(true);
+    };
+
+    const submitProjectSaveAs = async () => {
+        if (!saveBrowserPath) {
+            showToast('请选择有效的保存路径', 'error');
+            return;
+        }
+
+        const projectName = saveProjectNameInput.trim() || '未保存项目';
+        const directoryName = (saveDirectoryNameInput.trim() || toSnakeDirectoryName(projectName));
+
+        setIsSaveSubmitting(true);
+        try {
+            const synced = await syncSnapshotToProject(false);
+            if (!synced) {
+                return;
+            }
+
+            const saveAsResult = await noaDesktopClient.saveProjectAs({
+                basePath: saveBrowserPath,
+                directoryName,
+                projectName,
+            });
+            if (!saveAsResult.ok) {
+                showToast(i18n.t('feedback.manualSaveFailed', { message: saveAsResult.error.message }), 'error');
+                return;
+            }
+
+            setProjectMeta({
+                projectName: saveAsResult.data.projectName,
+                isDefaultProject: false,
+            });
+            isDefaultProjectRef.current = false;
+            projectNameRef.current = saveAsResult.data.projectName;
+            setIsSaveDialogOpen(false);
+            showToast(i18n.t('feedback.manualSaveDone'), 'success');
+
+            if (saveDialogMode === 'close') {
+                await noaDesktopClient.closeWindow({ confirmed: true });
+            }
+        } finally {
+            setIsSaveSubmitting(false);
+        }
+    };
+
+    const handleManualSave = async () => {
+        if (isDefaultProjectRef.current) {
+            await openProjectSaveDialog('manual');
+            return;
+        }
+
+        const synced = await syncSnapshotToProject(false);
+        if (synced) {
+            showToast(i18n.t('feedback.manualSaveDone'), 'success');
+        }
+    };
+
+    const handleCloseIntent = async () => {
+        if (!dirtyRef.current) {
+            await noaDesktopClient.closeWindow({ confirmed: true });
+            return;
+        }
+
+        setIsCloseConfirmOpen(true);
+    };
+
+    const closeWithoutSaving = async () => {
+        setIsCloseConfirmOpen(false);
+        await clearProjectDirty();
+        await noaDesktopClient.closeWindow({ confirmed: true });
+    };
+
+    const saveAndExit = async () => {
+        setIsCloseConfirmOpen(false);
+        if (isDefaultProjectRef.current) {
+            await openProjectSaveDialog('close');
+            return;
+        }
+
+        const synced = await syncSnapshotToProject(false);
+        if (synced) {
+            await noaDesktopClient.closeWindow({ confirmed: true });
+        }
+    };
+
+    useEffect(() => {
+        const syncProjectVideos = async () => {
+            if (!hasLoadedTempNoteRef.current) {
+                return;
+            }
+
+            const result = await noaDesktopClient.setProjectVideos({
+                videos: videoPlaylist.map((item) => ({
+                    id: item.id,
+                    label: item.label,
+                    sourceUrl: item.sourceUrl,
+                })),
+                currentVideoId,
+            });
+            if (!result.ok) {
+                showToast(result.error.message, 'error');
+                return;
+            }
+
+            if (skipNextVideoSyncDirtyRef.current) {
+                skipNextVideoSyncDirtyRef.current = false;
+                return;
+            }
+
+            await markProjectDirty();
+        };
+
+        void syncProjectVideos();
+    }, [videoPlaylist, currentVideoId, showToast]);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            if (!hasLoadedTempNoteRef.current) {
+                return;
+            }
+
+            if (!dirtyRef.current) {
+                return;
+            }
+
+            void syncSnapshotToProject(true);
+        }, 20000);
+
+        return () => {
+            window.clearInterval(timer);
+        };
+    }, []);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const isSaveKey = event.key.toLowerCase() === 's';
+            if (!isSaveKey || (!event.ctrlKey && !event.metaKey)) {
+                return;
+            }
+
+            event.preventDefault();
+            void handleManualSave();
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, []);
+
+    useEffect(() => {
+        const onCloseIntentEvent = () => {
+            void handleCloseIntent();
+        };
+
+        window.addEventListener('noa-window-close-intent', onCloseIntentEvent);
+        return () => {
+            window.removeEventListener('noa-window-close-intent', onCloseIntentEvent);
+        };
+    }, []);
 
     useEffect(() => {
         return () => {
@@ -141,7 +490,7 @@ export function usePlayerWorkbenchController() {
 
         setCurrentVideoId(videoId);
         setUrlInput(target.label);
-            void applyVideoSource(target.sourceUrl, target.fallbackUrl);
+        void applyVideoSource(target.sourceUrl, target.fallbackUrl);
     };
 
     const renameVideo = (videoId: string) => {
@@ -230,7 +579,7 @@ export function usePlayerWorkbenchController() {
         const nextVideo = nextPlaylist[fallbackIndex];
         setCurrentVideoId(nextVideo.id);
         setUrlInput(nextVideo.label);
-            void applyVideoSource(nextVideo.sourceUrl, nextVideo.fallbackUrl);
+        void applyVideoSource(nextVideo.sourceUrl, nextVideo.fallbackUrl);
         showToast(i18n.t('feedback.videoDeletedSwitch'), 'success');
     };
 
@@ -420,6 +769,41 @@ export function usePlayerWorkbenchController() {
         }
     };
 
+    const onSaveProjectNameChange = (value: string) => {
+        setSaveProjectNameInput(value);
+        setSaveDirectoryNameInput(toSnakeDirectoryName(value));
+    };
+
+    const navigateSavePath = async (targetPath: string) => {
+        await loadSaveDirectories(targetPath);
+    };
+
+    const navigateSaveParentPath = async () => {
+        if (!saveParentPath) {
+            return;
+        }
+
+        await loadSaveDirectories(saveParentPath);
+    };
+
+    const createFolderInSavePath = async () => {
+        if (!newFolderName.trim()) {
+            return;
+        }
+
+        const result = await noaDesktopClient.createSaveDirectory({
+            basePath: saveBrowserPath,
+            directoryName: newFolderName,
+        });
+        if (!result.ok) {
+            showToast(result.error.message, 'error');
+            return;
+        }
+
+        setNewFolderName('');
+        await loadSaveDirectories(saveBrowserPath);
+    };
+
     const isSeekable = durationMs > 0;
 
     return {
@@ -449,6 +833,15 @@ export function usePlayerWorkbenchController() {
             markdownText,
             urlInput,
             feedback,
+            isSaveDialogOpen,
+            saveProjectNameInput,
+            saveDirectoryNameInput,
+            saveBrowserPath,
+            saveParentPath,
+            saveDirectories,
+            newFolderName,
+            isSaveSubmitting,
+            isCloseConfirmOpen,
         },
         actions: {
             setMarkdownText,
@@ -487,6 +880,17 @@ export function usePlayerWorkbenchController() {
             setPlaying,
             setIsBuffering,
             showToast,
+            closeSaveDialog: () => setIsSaveDialogOpen(false),
+            submitProjectSaveAs,
+            onSaveProjectNameChange,
+            setSaveDirectoryNameInput,
+            navigateSavePath,
+            navigateSaveParentPath,
+            setNewFolderName,
+            createFolderInSavePath,
+            closeCloseConfirm: () => setIsCloseConfirmOpen(false),
+            closeWithoutSaving,
+            saveAndExit,
         },
     };
 }
